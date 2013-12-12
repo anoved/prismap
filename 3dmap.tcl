@@ -4,7 +4,6 @@ lappend auto_path /home/anoved/Repos/shapetcl
 package require shapetcl
 
 # usage: 3dmap SHAPEFILE ATTRNAME
-# SHAPEFILE 
 
 proc coordlist {coords} {
 	set cl [list]
@@ -25,6 +24,13 @@ set attr [$shp fields index $attrname]
 
 # get number of elements in shapefile
 set count [$shp info count]
+
+# find center of bounding box and translate everything to 0, 0 origin
+lassign [$shp info bounds] xmin ymin xmax ymax
+set xloc [expr {($xmax + $xmin) / -2}]
+set yloc [expr {($ymax + $ymin) / -2}]
+
+puts [format {translate([%s,%s,0]) } $xloc $yloc]
 
 puts "union() {"
 
