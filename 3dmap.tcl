@@ -10,7 +10,7 @@ proc coordlist {coords} {
 	foreach {x y} [lrange $coords 0 end-2] {
 		lappend cl [format {[%s, %s]} $x $y] 
 	}
-	return [join $cl ","]
+	return [join $cl ",\n"]
 }
 
 set shp_path [lindex $argv 0]
@@ -30,7 +30,7 @@ lassign [$shp info bounds] xmin ymin xmax ymax
 set xloc [expr {($xmax + $xmin) / -2}]
 set yloc [expr {($ymax + $ymin) / -2}]
 
-puts [format {translate([%s,%s,0]) } $xloc $yloc]
+puts [format "translate(\[%s, %s, 0\]) " $xloc $yloc]
 
 puts "union() {"
 
@@ -45,8 +45,8 @@ for {set i 0} {$i < $count} {incr i} {
 	set coords [$shp coord read $i]
 	
 	foreach c $coords {
-		puts [format {linear_extrude(height=%f)} $height]
-		puts [format {polygon(points=[%s]);} [coordlist $c]]
+		puts [format "linear_extrude(height=%f)" $height]
+		puts [format "polygon(points=\[\n%s\]);" [coordlist $c]]
 	}
 }
 
