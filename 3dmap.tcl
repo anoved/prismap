@@ -1,6 +1,5 @@
 #!/usr/bin/tclsh
 
-lappend auto_path /home/anoved/Repos/shapetcl
 package require shapetcl
 
 # usage: 3dmap SHAPEFILE ATTRNAME
