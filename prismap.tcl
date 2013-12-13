@@ -6,48 +6,85 @@ package require shapetcl
 package require msgcat
 ::msgcat::mcload [file join [file dirname [info script]] {msgs}]
 
+# Populates shp() array with shapefile info. shp keys:
+# file - shapefile token
+# count - entities in shapefile
+# x_offset, y_offset - offset to bounding box centroid
+# x_size, y_size - bounding box dimensions
+# attr - id of extrusion attribute
+# min, max - minimum and maximum values of attr
 proc LoadShapefile {} {
+	global config
+	global shp
 	
-	variable shp
+	set shp(file) [::shapetcl::shapefile $config(shp)]
 	
-	set shp [::shapetcl::shapefile $shp_path]
+	set shp(count) [$shp(file) info count]
+	if {$shp(count) < 1} {
+		Abort "Empty shapefile"
+	}
 	
-	set shp_count [$shp info count]
+	lassign [$shp(file) info bounds] xmin ymin xmax ymax
 	
-	# get bounding box size and centroid offset
+	# translation to move bounding box to origin
+	set shp(x_offset) [expr {($xmax + $xmin) / -2.0}]
+	set shp(y_offset) [expr {($ymax + $ymin) / -2.0}]
 	
-	set attr [$shp fields index $attr_name]
+	# bounding box dimensions
+	set shp(x_size) [expr {$xmax - $xmin}]
+	set shp(y_size) [expr {$ymax - $ymin}]
 	
-	# get attribute min/max
+	# index of named attribute
+	set shp(attr) [$shp(file) fields index $config(attr)]
 	
+	# get attribute min/max values (initialize to first)
+	set shp(min) [set shp(max) [$shp(file) attribute read 0 $shp(attr)]]
+	for {set i 1} {$i < $shp(count)} {incr i} {
+		set value [$shp(file) attribute read $i $shp(attr)]
+		if {$value < $shp(min)} {
+			set shp(min) $value
+		}
+		if {$value > $shp(max)} {
+			set shp(max) $value
+		}
+	}
 }
 
-proc PostLoadSetup {} {
-	
-	# re-validate floor/ceil, if set, against min/max
-	
-	# set default floor/ceil to min/max
-	
-	# calculate default scale 
-	
+proc Output {line} {
+	global config
+	puts $config(out) $line
+}
+
+proc CoordList {part} {
+	set l [list]
+	# shapefile rings explicitly repeat the first vertex
+	# as the last vertex, which we don't need, hence end-2
+	foreach {x y} [lrange $part 0 end-2] {
+		lappend l [format {[%s, %s]} $x $y]
+	}
+	return [join $l ",\n"]
 }
 
 proc Process {} {
+	global config
+	global shp
 	
-	# union {
+	Output "union() {"
 	
-	# base rect, if on
+	if {$config(box)} {
+		Output [format "cube(size=\[%s, %s, %s\], center=true);" $shp(x_size) $shp(y_size) $config(base)]
+	}
 	
-	# translate bbox to origin {
-	
-	for {set i 0} {$i < $count} {incr i} {
+	Output [format "translate(\[%s, %s, 0\]) {" $shp(x_offset) $shp(y_offset)]
+		
+	for {set i 0} {$i < $shp(count)} {incr i} {
 	
 		# calculate extrusion height
-		set attr_value [$shp attributes read $i $attr]
-		set height [expr {$base + (double($scale) * ($attr_value - $floor))}]
+		set measure [$shp(file) attributes read $i $shp(attr)]
+		set extrusion [expr {$config(base) + (double($config(scale)) * ($measure - $config(floor)))}]
 		
 		# get coordinates; may consist of multiple rings
-		set coords [$shp coordinates read $i]
+		set coords [$shp(file) coordinates read $i]
 		
 		# each outer ring (island) is its own scad polygon
 		# inner rings (holes) are expressed as per polygon parameters
@@ -57,88 +94,121 @@ proc Process {} {
 		# won't "fail" - holes will just be union filled.
 		foreach part $coords {
 			 # linear_extrude($height)
-			 # polygon(points=$part)
+			 Output [format "linear_extrude(height=%f) " $extrusion]
+			 Output [format "polygon(points=\[\n%s\]);" [CoordList $part]]
 		}
 	}
 	
-	# close translate and union }}
-	
+	# close translate and union
+	Output "}\n}"
 }
 
-proc ScaleScoring {} {
-	
-	# optionally substract "scale bar" perimeter rings from the extrusion at regular intervals
-	# starting at $base height
-	
+# Initializes config settings
+proc ConfigInitialDefaults {} {
+	global config
+	array set config {
+		base   1.0
+		floor  {}
+		ceil   {}
+		height {}
+		scale  1.0
+		shp    {}
+		attr   {}
+		out    stdout
+		box    0
+	}
 }
 
-proc ParseOptions {argl} {
-	
-	
-	set base   {}
-	set floor  {}
-	set ceil   {}
-	set height {}
-	set scale  {}
-
+# Updates config settings based on command line options
+proc ConfigOptions {argl} {
+	global config
 	for {set a 0} {$a < [llength $argl]} {incr a} {
 		set arg [lindex $argl $a]
-		
 		switch -- $arg {
-			-b - --base {
-				if {[scan [lindex $argl [incr a]] %f base] != 1} {
-					Abort {$arg must be numeric.}
+			
+			--base {
+				if {[scan [lindex $argl [incr a]] %f config(base)] != 1} {
+					Abort {%1$s must be numeric.} $arg
 				}
-				if {$base < 0} {
-					Abort {$arg must be >= 0}
+				if {$config(base) < 0.1} {
+					Abort {%1$s must be >= 0.1 (%2$s)} $arg $config(base)
 				}
 			}
-			-f - --floor {
-				if {[scan [lindex $argl [incr a]] %f floor] != 1} {
-					Abort {$arg must be numeric}
+			--box {
+				set config(box) 1
+			}
+			
+			
+			--floor {
+				if {[scan [lindex $argl [incr a]] %f config(floor)] != 1} {
+					Abort {%1$s must be numeric.} $arg
 				}
 				# must check that floor <= attribute min value
 				# must check that floor < ceil
 			}
-			-c - --ceil {
-				if {[scan [lindex $argl [incr a]] %f ceil] != 1} {
-					Abort {$arg must be numeric}
+			--ceil {
+				if {[scan [lindex $argl [incr a]] %f config(ceil)] != 1} {
+					Abort {%1$s must be numeric.} $arg
 				}
 				# must check that ceil >= attribute max value
 				# must check that ceil > floor
 			}
-			-h - --height {
-				if {[scan [lindex $arg1 [incr a]] %f height] != 1} {
-					Abort {$arg must be numeric}
+			
+			--height {
+				if {[scan [lindex $arg1 [incr a]] %f config(height)] != 1} {
+					Abort {$%1$s must be numeric.} $arg
 				}
-				if {$height <= 0} {
-					Abort {$arg must be > 0}
-				}
-			}
-			-s - --scale {
-				if {[scan [lindex $argl [incr a]] %f scale] != 1} {
-					Abort {$arg must be numeric}
-				}
-				if {$scale == 0} {
-					Abort {$arg must not be 0}
+				if {$config(height) <= 0} {
+					Abort {%1$s must be > 0. (%2$s)} $arg $config(height)
 				}
 			}
-			-i - --in {
-				set shapefile [lindex $argl [incr a]]
+			--scale {
+				if {[scan [lindex $argl [incr a]] %f config(scale)] != 1} {
+					Abort {%1$s must be numeric.} $arg
+				}
+				if {$config(scale) == 0} {
+					Abort {%1$s must not be 0.} $arg
+				}
 			}
-			-a - --attribute {
-				set attribute [lindex $argl [incr a]]
+			
+			-i -
+			--in {
+				if {$config(shp) ne {}} {
+					Abort {--in already set.}
+				}
+				set config(shp) [lindex $argl [incr a]]
 			}
-			-h --help {
+			-a -
+			--attribute {
+				if {$config(attr) ne {}} {
+					Abort {--attribute already set.}
+				}
+				set config(attr) [lindex $argl [incr a]]
+			}
+			
+			-o -
+			--out {
+				
+				if {$config(out) ne "stdout"} {
+					Abort {--out already set.}
+				}
+				
+				set ofile [lindex $argl [incr a]]
+				
+				# - explicitly sets output to stdout, the default
+				if {$ofile eq "-"} {
+					continue
+				}
+				
+				if {[catch {open $ofile w} config(out)]} {
+					Abort $config(out)
+				}
+			}
+			
+			-h -
+			--help {
 				PrintUsage
-				exit
-			}
-			-o - --out {
-				# output scad file path
-				# by default, print to stdout
-			}
-			-r - --rect {
-				# rectangular base mode
+				exit 0
 			}
 			default {
 				Abort {unrecognized option $arg}
@@ -146,9 +216,50 @@ proc ParseOptions {argl} {
 		}
 	}
 	
-	# check for required arguments (-i and -a)
+	# check for required arguments: shapefile and extrusion attribute
+	if {$config(shp) == {}} {
+		Abort {--in shapefile must be specified.}
+	}
+	if {$config(attr) == {}} {
+		Abort {-a attribute must be specified.}
+	}
+}
+
+# Updates config settings based on input attribute values.
+proc ConfigDynamicDefaults {} {
+	global config
+	global shp
 	
-	# re-validate floor/ceil once attributes are loaded 
+	
+	
+	if {$config(floor) == {}} {
+		set config(floor) $shp(min)
+	} elseif {$config(floor) > $shp(min)} {
+		Abort {--floor must be <= --attr minimum (%1$s > %2$s)} $config(floor) $shp(min)
+	}
+	
+	if {$config(ceil) == {}} {
+		set config(ceil) $shp(max)
+	} elseif {$config(ceil) < $shp(max)} {
+		Abort {--ceil must be >= --attr maximum (%1$s < %2$s)} $config(ceil) $shp(max)
+	}
+	
+	# if height is set, it is used to compute the scale
+	# such that ceil would be extruded to height + base.
+	if {$config(height) ne {}} {
+		set config(scale) [expr {double($config(height)) / double($config(ceil))}]
+	}
+}
+
+proc Cleanup {} {
+	global config
+	global shp
+	
+	$shp(file) close
+	
+	if {$config(out) ne "stdout"} {
+		close $config(out)
+	}
 }
 
 proc PrintUsage {} {
@@ -156,16 +267,21 @@ proc PrintUsage {} {
 	# placeholder
 }
 
-
-
 proc Log {msg args} {
 	puts stderr [::msgcat::mc $msg {*}$args]
 }
 
 proc Abort {msg args} {
 	Log $msg {*}$args
-	exit
+	exit 1
 }
 
-ParseOptions $::argv
-Start
+
+
+
+ConfigInitialDefaults
+ConfigOptions $::argv
+LoadShapefile
+ConfigDynamicDefaults
+Process
+Cleanup
