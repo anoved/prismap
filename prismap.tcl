@@ -35,7 +35,9 @@ proc LoadShapefile {} {
 	set shp(y_size) [expr {$ymax - $ymin}]
 	
 	# index of named attribute
-	set shp(attr) [$shp(file) fields index $config(attr)]
+	if {[catch {$shp(file) fields index $config(attr)} shp(attr)]} {
+		Abort $shp(attr)
+	}
 	
 	# get attribute min/max values (initialize to first)
 	set shp(min) [set shp(max) [$shp(file) attribute read 0 $shp(attr)]]
@@ -155,7 +157,7 @@ proc ConfigOptions {argl} {
 			}
 			
 			--height {
-				if {[scan [lindex $arg1 [incr a]] %f config(height)] != 1} {
+				if {[scan [lindex $argl [incr a]] %f config(height)] != 1} {
 					Abort {$%1$s must be numeric.} $arg
 				}
 				if {$config(height) <= 0} {
