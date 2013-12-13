@@ -57,14 +57,21 @@ proc Output {line} {
 	puts $config(out) $line
 }
 
-proc CoordList {part} {
-	set l [list]
-	# shapefile rings explicitly repeat the first vertex
-	# as the last vertex, which we don't need, hence end-2
-	foreach {x y} [lrange $part 0 end-2] {
-		lappend l [format {[%s, %s]} $x $y]
+# return a tuple of point list and part point index list
+proc ReformatCoords {coords} {
+	set points [list]
+	set parts [list]
+	set index 0
+	foreach part $coords {
+		set part_points [list]		
+		foreach {x y} [lrange $part 0 end-2] {
+			lappend points [format "\[%s, %s\]" $x $y]
+			lappend part_points $index
+			incr index
+		}
+		lappend parts [format "\[%s\]" [join $part_points ","]]
 	}
-	return [join $l ",\n"]
+	return [list [join $points ",\n"] [join $parts ",\n"]]
 }
 
 proc BaseBox {} {
@@ -94,21 +101,15 @@ proc Process {} {
 		set extrusion [expr {$config(base) + (double($config(scale)) * (double($measure) - $config(floor)))}]
 		
 		# get coordinates; may consist of multiple rings
-		set coords [$shp(file) coordinates read $i]
+		lassign [ReformatCoords [$shp(file) coordinates read $i]] points parts
 		
-		Output [format "// Feature: %d, Value: %s, Parts: %d" $i $measure [llength $coords]]
-		
-		# each outer ring (island) is its own scad polygon
-		# inner rings (holes) are expressed as per polygon parameters
-		# I need a refresh on how shapefiles/shapetcl handle this in order Do The Right Thing.
-		
-		# this treats all rings as outer rings.
-		# won't "fail" - holes will just be union filled.
-		foreach part $coords {
-			 # linear_extrude($height)
-			 Output [format "linear_extrude(height=%f) " $extrusion]
-			 Output [format "polygon(points=\[\n%s\]);" [CoordList $part]]
-		}
+		# Fortunately, OpenSCAD seems to be able to sort out islands and holes itself,
+		# so all we need to do is reformat the coords lists as a single points list
+		# and an associated parts points index list.
+		# Or SHEEE-IT, maybe not. 
+		Output [format "// Feature: %d, Value: %s, Parts: %d" $i $measure [llength $parts]]
+		Output [format "linear_extrude(height=%f) " $extrusion]
+		Output [format "polygon(points=\[\n%s\n\], paths=\[\n%s\n\]);" $points $parts]
 	}
 	
 	# close translate and union
