@@ -67,17 +67,23 @@ proc CoordList {part} {
 	return [join $l ",\n"]
 }
 
+proc BaseBox {} {
+	global config
+	global shp
+	if {$config(box)} {
+		Output [format "// Base box:"]
+		Output [format "translate(\[%f, %f, 0\])" [expr {$shp(x_size) / -2.0}] [expr {$shp(y_size) / -2.0}]]
+		Output [format "cube(size=\[%s, %s, %s\]);"  $shp(x_size) $shp(y_size) $config(base)]
+	}
+}
+
 proc Process {} {
 	global config
 	global shp
 	
 	Output "union() {"
 	
-	if {$config(box)} {
-		Output [format "// Base box:"]
-		Output [format "translate(\[%f, %f, 0\])" [expr {$shp(x_size) / -2.0}] [expr {$shp(y_size) / -2.0}]]
-		Output [format "cube(size=\[%s, %s, %s\]);"  $shp(x_size) $shp(y_size) $config(base)]
-	}
+	BaseBox
 	
 	Output [format "translate(\[%s, %s, 0\]) {" $shp(x_offset) $shp(y_offset)]
 		
@@ -147,15 +153,11 @@ proc ConfigOptions {argl} {
 				if {[scan [lindex $argl [incr a]] %f config(floor)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
-				# must check that floor <= attribute min value
-				# must check that floor < ceil
 			}
 			--ceil {
 				if {[scan [lindex $argl [incr a]] %f config(ceil)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
-				# must check that ceil >= attribute max value
-				# must check that ceil > floor
 			}
 			
 			--height {
@@ -233,8 +235,6 @@ proc ConfigOptions {argl} {
 proc ConfigDynamicDefaults {} {
 	global config
 	global shp
-	
-	
 	
 	if {$config(floor) == {}} {
 		set config(floor) $shp(min)
