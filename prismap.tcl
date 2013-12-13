@@ -91,10 +91,12 @@ proc Process {} {
 	
 		# calculate extrusion height
 		set measure [$shp(file) attributes read $i $shp(attr)]
-		set extrusion [expr {$config(base) + (double($config(scale)) * ($measure - $config(floor)))}]
+		set extrusion [expr {$config(base) + (double($config(scale)) * (double($measure) - $config(floor)))}]
 		
 		# get coordinates; may consist of multiple rings
 		set coords [$shp(file) coordinates read $i]
+		
+		Output [format "// Feature: %d, Value: %s, Parts: %d" $i $measure [llength $coords]]
 		
 		# each outer ring (island) is its own scad polygon
 		# inner rings (holes) are expressed as per polygon parameters
