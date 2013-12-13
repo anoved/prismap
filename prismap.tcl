@@ -74,7 +74,9 @@ proc Process {} {
 	Output "union() {"
 	
 	if {$config(box)} {
-		Output [format "cube(size=\[%s, %s, %s\], center=true);" $shp(x_size) $shp(y_size) $config(base)]
+		Output [format "// Base box:"]
+		Output [format "translate(\[%f, %f, 0\])" [expr {$shp(x_size) / -2.0}] [expr {$shp(y_size) / -2.0}]]
+		Output [format "cube(size=\[%s, %s, %s\]);"  $shp(x_size) $shp(y_size) $config(base)]
 	}
 	
 	Output [format "translate(\[%s, %s, 0\]) {" $shp(x_offset) $shp(y_offset)]
