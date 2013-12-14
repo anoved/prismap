@@ -13,11 +13,10 @@ package require msgcat
 # x_size, y_size - bounding box dimensions
 # attr - id of extrusion attribute
 # min, max - minimum and maximum values of attr
-proc LoadShapefile {} {
-	global config
+proc OpenShapefile {path attr_name} {
 	global shp
 	
-	if {[catch {::shapetcl::shapefile $config(in)} shp(file)]} {
+	if {[catch {::shapetcl::shapefile $path} shp(file)]} {
 		Abort [format "Cannot load shapefile: %s" $shp(file)]
 	}
 	
@@ -37,7 +36,7 @@ proc LoadShapefile {} {
 	set shp(y_size) [expr {$shp(ymax) - $shp(ymin)}]
 	
 	# index of named attribute
-	if {[catch {$shp(file) fields index $config(attr)} shp(attr)]} {
+	if {[catch {$shp(file) fields index $attr_name} shp(attr)]} {
 		Abort $shp(attr)
 	}
 	
@@ -54,9 +53,33 @@ proc LoadShapefile {} {
 	}
 }
 
+proc CloseShapefile {} {
+	global shp
+	$shp(file) close
+}
+
+proc OpenOutput {path} {
+	global out
+	if {[catch {open $path w} out]} {
+		Abort $out
+	}
+}
+
+proc CloseOutput {} {
+	global out
+	close $out
+}
+
 proc Output {msg args} {
-	global config
-	puts $config(out) [format $msg {*}$args]
+	global out
+	puts $out [format $msg {*}$args]
+}
+
+# xs ys zs - size
+# x y z - location of origin corner
+proc OutputCube {xs ys zs x y z} {
+	Output "translate(\[%f, %f, %f\])" $x $y $z
+	Output "cube(\[%f, %f, %f\]);" $xs $ys $zs
 }
 
 # return a tuple of point list and part point index list
@@ -74,13 +97,6 @@ proc ReformatCoords {coords} {
 		lappend parts [format "\[%s\]" [join $part_points ","]]
 	}
 	return [list [join $points ",\n"] [join $parts ",\n"]]
-}
-
-# xs ys zs - size
-# x y z - location of origin corner
-proc OutputCube {xs ys zs x y z} {
-	Output "translate(\[%f, %f, %f\])" $x $y $z
-	Output "cube(\[%f, %f, %f\]);" $xs $ys $zs
 }
 
 proc Box {} {
@@ -156,7 +172,7 @@ proc ConfigInitialDefaults {} {
 		scale  1.0
 		in     {}
 		attr   {}
-		out    stdout
+		out    {}
 		box    0
 		walls  0
 	}
@@ -190,7 +206,6 @@ proc ConfigOptions {argl} {
 				# walls requires/implies base box
 				set config(box) 1
 			}
-			
 			
 			--floor {
 				if {[scan [lindex $argl [incr a]] %f config(floor)] != 1} {
@@ -237,21 +252,10 @@ proc ConfigOptions {argl} {
 			
 			-o -
 			--out {
-				
-				if {$config(out) ne "stdout"} {
+				if {$config(out) ne {}} {
 					Abort {--out already set.}
 				}
-				
-				set ofile [lindex $argl [incr a]]
-				
-				# - explicitly sets output to stdout, the default
-				if {$ofile eq "-"} {
-					continue
-				}
-				
-				if {[catch {open $ofile w} config(out)]} {
-					Abort $config(out)
-				}
+				set config(out) [lindex $argl [incr a]]
 			}
 			
 			-h -
@@ -259,18 +263,22 @@ proc ConfigOptions {argl} {
 				PrintUsage
 				exit 0
 			}
+			
 			default {
 				Abort {unrecognized option %1$s} $arg
 			}
 		}
 	}
 	
-	# check for required arguments: shapefile and extrusion attribute
+	# check for required arguments
 	if {$config(in) == {}} {
 		Abort {--in shapefile must be specified.}
 	}
 	if {$config(attr) == {}} {
 		Abort {-a attribute must be specified.}
+	}
+	if {$config(out) == {}} {
+		Abort {--out scad file must be specified.}
 	}
 }
 
@@ -300,17 +308,6 @@ proc ConfigDynamicDefaults {} {
 	}
 }
 
-proc Cleanup {} {
-	global config
-	global shp
-	
-	$shp(file) close
-	
-	if {$config(out) ne "stdout"} {
-		close $config(out)
-	}
-}
-
 proc PrintUsage {} {
 	puts [::msgcat::mc {Usage: prismap [OPTIONS]}]
 	# placeholder
@@ -330,7 +327,9 @@ proc Abort {msg args} {
 
 ConfigInitialDefaults
 ConfigOptions $::argv
-LoadShapefile
+OpenShapefile $config(in) $config(attr)
 ConfigDynamicDefaults
+OpenOutput $config(out)
 Process
-Cleanup
+CloseOutput
+CloseShapefile
