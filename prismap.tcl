@@ -119,7 +119,7 @@ proc Walls {} {
 	global shp
 	if {$config(walls) != 0} {
 		Output "// Walls:"
-		# "west" wall
+		# "west" wall (extends north to line up with north wall)
 		OutputCube \
 				$config(walls) [expr {$shp(y_size) + $config(walls)}] $config(height) \
 				[expr {$shp(xmin) - $config(walls)}] $shp(ymin) 0
@@ -165,24 +165,24 @@ proc Process {} {
 	Output "}}"
 }
 
-# Initializes config settings
-proc ConfigInitialDefaults {} {
+proc ConfigDefaults {} {
 	global config
 	array set config {
-		base   1.0
-		floor  {}
-		ceil   {}
-		height {}
-		scale  1.0
-		in     {}
-		attr   {}
-		out    {}
-		box    0
-		walls  0
+		base    1.0
+		floor   {}
+		ceil    {}
+		height  {}
+		scale   1.0
+		in      {}
+		attr    {}
+		out     {}
+		box     0
+		walls   0
+		verbose 0
 	}
 }
 
-# Updates config settings based on command line options
+# Updates config based on command line options
 proc ConfigOptions {argl} {
 	global config
 	for {set a 0} {$a < [llength $argl]} {incr a} {
@@ -262,6 +262,11 @@ proc ConfigOptions {argl} {
 				set config(out) [lindex $argl [incr a]]
 			}
 			
+			-v -
+			--verbose {
+				set config(verbose) 1
+			}
+			
 			-h -
 			--help {
 				PrintUsage
@@ -286,8 +291,8 @@ proc ConfigOptions {argl} {
 	}
 }
 
-# Updates config settings based on input attribute values.
-proc ConfigDynamicDefaults {} {
+# Calculates and validates config settings that depend on attribute values
+proc ConfigCheck {} {
 	global config
 	global shp
 	
@@ -312,6 +317,15 @@ proc ConfigDynamicDefaults {} {
 	}
 }
 
+proc ConfigLog {} {
+	global config
+	if {$config(verbose)} {
+		foreach {option value} [array get config] {
+			Log "$option: $value"
+		}
+	}
+}
+
 proc PrintUsage {} {
 	puts [::msgcat::mc {Usage: prismap [OPTIONS]}]
 	# placeholder
@@ -329,10 +343,11 @@ proc Abort {msg args} {
 
 
 
-ConfigInitialDefaults
+ConfigDefaults
 ConfigOptions $::argv
 OpenShapefile $config(in) $config(attr)
-ConfigDynamicDefaults
+ConfigCheck
+ConfigLog
 OpenOutput $config(out)
 Process
 CloseOutput
