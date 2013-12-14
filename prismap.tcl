@@ -54,9 +54,9 @@ proc LoadShapefile {} {
 	}
 }
 
-proc Output {line} {
+proc Output {msg args} {
 	global config
-	puts $config(out) $line
+	puts $config(out) [format $msg {*}$args]
 }
 
 # return a tuple of point list and part point index list
@@ -79,8 +79,8 @@ proc ReformatCoords {coords} {
 # xs ys zs - size
 # x y z - location of origin corner
 proc OutputCube {xs ys zs x y z} {
-	Output [format "translate(\[%f, %f, %f\])" $x $y $z]
-	Output [format "cube(\[%f, %f, %f\]);" $xs $ys $zs]
+	Output "translate(\[%f, %f, %f\])" $x $y $z
+	Output "cube(\[%f, %f, %f\]);" $xs $ys $zs
 }
 
 proc Box {} {
@@ -119,7 +119,7 @@ proc Process {} {
 	global shp
 	
 	# combine everything and move it to the origin
-	Output [format "union() {translate(\[%s, %s, 0\]) {" $shp(x_offset) $shp(y_offset)]
+	Output "union() {translate(\[%s, %s, 0\]) {" $shp(x_offset) $shp(y_offset)
 	
 	Box
 	Walls
@@ -136,9 +136,9 @@ proc Process {} {
 		# Fortunately, OpenSCAD seems to be able to sort out islands and holes itself,
 		# so all we need to do is reformat the coords lists as a single points list
 		# and an associated parts points index list.
-		Output [format "// Feature: %d, Value: %s, Parts: %d" $i $measure [llength $parts]]
-		Output [format "linear_extrude(height=%f)" $extrusion]
-		Output [format "polygon(points=\[\n%s\n\], paths=\[\n%s\n\]);" $points $parts]
+		Output "// Feature: %d, Value: %s, Parts: %d" $i $measure [llength $parts]
+		Output "linear_extrude(height=%f)" $extrusion
+		Output "polygon(points=\[\n%s\n\], paths=\[\n%s\n\]);" $points $parts
 	}
 	
 	# close translate and union
