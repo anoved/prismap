@@ -84,8 +84,12 @@ proc BaseBox {} {
 	}
 }
 
-proc Process {} {
+proc ExtrusionHeight {measure} {
 	global config
+	return [expr {$config(base) + (double($config(scale)) * ($measure - $config(floor)))}]
+}
+
+proc Process {} {
 	global shp
 	
 	Output "union() {"
@@ -98,7 +102,7 @@ proc Process {} {
 	
 		# calculate extrusion height
 		set measure [$shp(file) attributes read $i $shp(attr)]
-		set extrusion [expr {$config(base) + (double($config(scale)) * (double($measure) - $config(floor)))}]
+		set extrusion [ExtrusionHeight $measure]
 		
 		# get coordinates; may consist of multiple rings
 		lassign [ReformatCoords [$shp(file) coordinates read $i]] points parts
@@ -106,7 +110,6 @@ proc Process {} {
 		# Fortunately, OpenSCAD seems to be able to sort out islands and holes itself,
 		# so all we need to do is reformat the coords lists as a single points list
 		# and an associated parts points index list.
-		# Or SHEEE-IT, maybe not. 
 		Output [format "// Feature: %d, Value: %s, Parts: %d" $i $measure [llength $parts]]
 		Output [format "linear_extrude(height=%f) " $extrusion]
 		Output [format "polygon(points=\[\n%s\n\], paths=\[\n%s\n\]);" $points $parts]
