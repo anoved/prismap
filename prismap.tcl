@@ -8,6 +8,7 @@ package require msgcat
 # Populates shp() array with shapefile info. shp keys:
 # file - shapefile token
 # count - entities in shapefile
+# xmin, xmax, ymin, ymax - bounding box extents
 # x_offset, y_offset - offset to bounding box centroid
 # x_size, y_size - bounding box dimensions
 # attr - id of extrusion attribute
@@ -16,7 +17,9 @@ proc LoadShapefile {} {
 	global config
 	global shp
 	
-	set shp(file) [::shapetcl::shapefile $config(shp)]
+	if {[catch {::shapetcl::shapefile $config(in)} shp(file)]} {
+		Abort [format "Cannot load shapefile: %s" $shp(file)]
+	}
 	
 	set shp(count) [$shp(file) info count]
 	if {$shp(count) < 1} {
@@ -151,7 +154,7 @@ proc ConfigInitialDefaults {} {
 		ceil   {}
 		height {}
 		scale  1.0
-		shp    {}
+		in     {}
 		attr   {}
 		out    stdout
 		box    0
@@ -219,10 +222,10 @@ proc ConfigOptions {argl} {
 			
 			-i -
 			--in {
-				if {$config(shp) ne {}} {
+				if {$config(in) ne {}} {
 					Abort {--in already set.}
 				}
-				set config(shp) [lindex $argl [incr a]]
+				set config(in) [lindex $argl [incr a]]
 			}
 			-a -
 			--attribute {
@@ -263,7 +266,7 @@ proc ConfigOptions {argl} {
 	}
 	
 	# check for required arguments: shapefile and extrusion attribute
-	if {$config(shp) == {}} {
+	if {$config(in) == {}} {
 		Abort {--in shapefile must be specified.}
 	}
 	if {$config(attr) == {}} {
