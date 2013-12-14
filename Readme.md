@@ -1,16 +1,18 @@
 # Prismap
 
-This script generates an [OpenSCAD](http://www.openscad.org/) model of a polygon shapefile with features extruded proportional to designated attribute values. Using OpenSCAD, the extruded "prism map" can be exported to STL format suitable for 3D printing.
+This script generates an [OpenSCAD](http://www.openscad.org/) model of a polygon shapefile with features extruded proportional to designated attribute values. Using OpenSCAD, the extruded "prism map" can be exported to STL format suitable for 3D printing. It is a work in progress.
 
-A work in progress. The end goal is to generate prism map templates configurable with [MakerBot Thingiverse Customizer](http://www.thingiverse.com/apps/customizer).
+The end goal is to generate prism map templates configurable with [MakerBot Thingiverse Customizer](http://www.thingiverse.com/apps/customizer).
 
 ## Example
+
+Documentation and additional examples forthcoming.
 
 ![example prismap model](examples/screenshot.png)
 
 The model display above was generated with the following options:
 
-	/prismap.tcl                    \
+	./prismap.tcl                   \
 	    --in examples/northeast.shp \
 	    --attribute Measure         \
 	    --out examples/example.scad \
@@ -20,7 +22,7 @@ The model display above was generated with the following options:
 	    --lower 0                   \
 	    --upper 30                  \
 
-Documentation and additional examples forthcoming.
+Note that this example includes disconnected "island" features that may be too small to print successfully. Some prep work to prune unnecessary detail will typically be needed to prepare shapefiles for printing.
 
 ## Prerequisites
 
