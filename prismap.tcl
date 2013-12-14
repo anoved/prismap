@@ -60,14 +60,18 @@ proc CloseShapefile {} {
 
 proc OpenOutput {path} {
 	global out
-	if {[catch {open $path w} out]} {
+	if {$path eq "-"} {
+		set out stdout
+	} elseif {[catch {open $path w} out]} {
 		Abort $out
 	}
 }
 
 proc CloseOutput {} {
 	global out
-	close $out
+	if {$out ne "stdout"} {
+		close $out
+	}
 }
 
 proc Output {msg args} {
