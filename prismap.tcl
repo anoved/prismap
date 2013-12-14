@@ -188,8 +188,7 @@ proc ConfigOptions {argl} {
 	for {set a 0} {$a < [llength $argl]} {incr a} {
 		set arg [lindex $argl $a]
 		switch -- $arg {
-			
-			--base {
+			-b - --base {
 				if {[scan [lindex $argl [incr a]] %f config(base)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
@@ -200,7 +199,7 @@ proc ConfigOptions {argl} {
 			--box {
 				set config(box) 1
 			}
-			--walls {
+			-w - --walls {
 				if {[scan [lindex $argl [incr a]] %f config(walls)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
@@ -210,19 +209,17 @@ proc ConfigOptions {argl} {
 				# walls requires/implies base box
 				set config(box) 1
 			}
-			
-			--floor {
+			-f - --floor {
 				if {[scan [lindex $argl [incr a]] %f config(floor)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
 			}
-			--ceil {
+			-c - --ceil {
 				if {[scan [lindex $argl [incr a]] %f config(ceil)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
 			}
-			
-			--height {
+			-h - --height {
 				if {[scan [lindex $argl [incr a]] %f config(height)] != 1} {
 					Abort {$%1$s must be numeric.} $arg
 				}
@@ -230,7 +227,7 @@ proc ConfigOptions {argl} {
 					Abort {%1$s must be > 0. (%2$s)} $arg $config(height)
 				}
 			}
-			--scale {
+			-s - --scale {
 				if {[scan [lindex $argl [incr a]] %f config(scale)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
@@ -238,41 +235,31 @@ proc ConfigOptions {argl} {
 					Abort {%1$s must be > 0. (%2$s)} $arg $config(scale)
 				}
 			}
-			
-			-i -
-			--in {
+			-i - --in {
 				if {$config(in) ne {}} {
 					Abort {--in already set.}
 				}
 				set config(in) [lindex $argl [incr a]]
 			}
-			-a -
-			--attribute {
+			-a - --attribute {
 				if {$config(attr) ne {}} {
 					Abort {--attribute already set.}
 				}
 				set config(attr) [lindex $argl [incr a]]
 			}
-			
-			-o -
-			--out {
+			-o - --out {
 				if {$config(out) ne {}} {
 					Abort {--out already set.}
 				}
 				set config(out) [lindex $argl [incr a]]
 			}
-			
-			-v -
-			--verbose {
+			-v - --verbose {
 				set config(verbose) 1
 			}
-			
-			-h -
-			--help {
+			-h - --help {
 				PrintUsage
 				exit 0
 			}
-			
 			default {
 				Abort {unrecognized option %1$s} $arg
 			}
