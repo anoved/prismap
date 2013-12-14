@@ -103,11 +103,11 @@ proc ReformatCoords {coords} {
 	return [list [join $points ",\n"] [join $parts ",\n"]]
 }
 
-proc Box {} {
+proc Floor {} {
 	global config
 	global shp
-	if {$config(box) != 0} {
-		Output "// Base box:"
+	if {$config(floor) != 0} {
+		Output "// Floor:"
 		OutputCube \
 				$shp(x_size) $shp(y_size) $config(base) \
 				$shp(xmin) $shp(ymin) 0
@@ -132,7 +132,7 @@ proc Walls {} {
 
 proc ExtrusionHeight {measure} {
 	global config
-	return [expr {$config(base) + ($config(scale) * (double($measure) - $config(floor)))}]
+	return [expr {$config(base) + ($config(scale) * (double($measure) - $config(lower)))}]
 }
 
 proc Process {} {
@@ -141,7 +141,7 @@ proc Process {} {
 	# combine everything and move it to the origin
 	Output "union() {translate(\[%s, %s, 0\]) {" $shp(x_offset) $shp(y_offset)
 	
-	Box
+	Floor
 	Walls
 	
 	for {set i 0} {$i < $shp(count)} {incr i} {
@@ -169,14 +169,14 @@ proc ConfigDefaults {} {
 	global config
 	array set config {
 		base    1.0
-		floor   {}
-		ceil    {}
+		lower   {}
+		upper   {}
 		height  {}
 		scale   1.0
 		in      {}
 		attr    {}
 		out     {}
-		box     0
+		floor   0
 		walls   0
 		verbose 0
 	}
@@ -196,8 +196,8 @@ proc ConfigOptions {argl} {
 					Abort {%1$s must be >= 0.1 (%2$s)} $arg $config(base)
 				}
 			}
-			--box {
-				set config(box) 1
+			-f - --floor {
+				set config(floor) 1
 			}
 			-w - --walls {
 				if {[scan [lindex $argl [incr a]] %f config(walls)] != 1} {
@@ -206,16 +206,16 @@ proc ConfigOptions {argl} {
 				if {$config(walls) < 0.1} {
 					Abort {%1$s must be >= 0.1 (%2$s)} $arg $config(walls)
 				}
-				# walls requires/implies base box
-				set config(box) 1
+				# walls require floor
+				set config(floor) 1
 			}
-			-f - --floor {
-				if {[scan [lindex $argl [incr a]] %f config(floor)] != 1} {
+			-l - --lower {
+				if {[scan [lindex $argl [incr a]] %f config(lower)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
 			}
-			-c - --ceil {
-				if {[scan [lindex $argl [incr a]] %f config(ceil)] != 1} {
+			-u - --upper {
+				if {[scan [lindex $argl [incr a]] %f config(upper)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
 			}
@@ -256,7 +256,7 @@ proc ConfigOptions {argl} {
 			-v - --verbose {
 				set config(verbose) 1
 			}
-			-h - --help {
+			--help {
 				PrintUsage
 				exit 0
 			}
@@ -283,24 +283,24 @@ proc ConfigCheck {} {
 	global config
 	global shp
 	
-	if {$config(floor) == {}} {
-		set config(floor) $shp(min)
-	} elseif {$config(floor) > $shp(min)} {
-		Abort {--floor must be <= --attr minimum (%1$s > %2$s)} $config(floor) $shp(min)
+	if {$config(lower) == {}} {
+		set config(lower) $shp(min)
+	} elseif {$config(lower) > $shp(min)} {
+		Abort {--lower must be <= --attr minimum (%1$s > %2$s)} $config(lower) $shp(min)
 	}
 	
-	if {$config(ceil) == {}} {
-		set config(ceil) $shp(max)
-	} elseif {$config(ceil) < $shp(max)} {
-		Abort {--ceil must be >= --attr maximum (%1$s < %2$s)} $config(ceil) $shp(max)
+	if {$config(upper) == {}} {
+		set config(upper) $shp(max)
+	} elseif {$config(upper) < $shp(max)} {
+		Abort {--to must be >= --attr maximum (%1$s < %2$s)} $config(upper) $shp(max)
 	}
 	
 	# if height is set, it is used to compute the scale
-	# such that ceil would be extruded to height + base.
+	# such that --to would be extruded to height + base.
 	if {$config(height) ne {}} {
-		set config(scale) [expr {($config(height) - $config(base)) / ($config(ceil) - $config(floor))}]
+		set config(scale) [expr {($config(height) - $config(base)) / ($config(upper) - $config(lower))}]
 	} else {
-		set config(height) [ExtrusionHeight $config(ceil)]
+		set config(height) [ExtrusionHeight $config(upper)]
 	}
 }
 
