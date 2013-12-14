@@ -221,7 +221,7 @@ proc ConfigOptions {argl} {
 			}
 			-h - --height {
 				if {[scan [lindex $argl [incr a]] %f config(height)] != 1} {
-					Abort {$%1$s must be numeric.} $arg
+					Abort {%1$s must be numeric.} $arg
 				}
 				if {$config(height) <= 0} {
 					Abort {%1$s must be > 0. (%2$s)} $arg $config(height)
