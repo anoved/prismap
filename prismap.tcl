@@ -1,9 +1,8 @@
 #!/usr/bin/tclsh
 
-package provide prismap 1.0
 package require shapetcl
-
 package require msgcat
+
 ::msgcat::mcload [file join [file dirname [info script]] {msgs}]
 
 # Populates shp() array with shapefile info. shp keys:
@@ -77,7 +76,8 @@ proc ReformatCoords {coords} {
 # xs ys zs - size
 # x y z - location of origin corner
 proc OutputCube {xs ys zs x y z} {
-	Output [format {translate([%f, %f, %f]) cube([%f, %f, %f]);} $x $y $z $xs $ys $zs]
+	Output [format "translate(\[%f, %f, %f\])" $x $y $z]
+	Output [format "cube(\[%f, %f, %f\]);" $xs $ys $zs]
 }
 
 proc Box {} {
@@ -109,7 +109,7 @@ proc Walls {} {
 
 proc ExtrusionHeight {measure} {
 	global config
-	return [expr {$config(base) + (double($config(scale)) * ($measure - $config(floor)))}]
+	return [expr {$config(base) + ($config(scale) * (double($measure) - $config(floor)))}]
 }
 
 proc Process {} {
@@ -134,7 +134,7 @@ proc Process {} {
 		# so all we need to do is reformat the coords lists as a single points list
 		# and an associated parts points index list.
 		Output [format "// Feature: %d, Value: %s, Parts: %d" $i $measure [llength $parts]]
-		Output [format "linear_extrude(height=%f) " $extrusion]
+		Output [format "linear_extrude(height=%f)" $extrusion]
 		Output [format "polygon(points=\[\n%s\n\], paths=\[\n%s\n\]);" $points $parts]
 	}
 	
@@ -295,12 +295,6 @@ proc ConfigDynamicDefaults {} {
 	} else {
 		set config(height) [ExtrusionHeight $config(ceil)]
 	}
-	
-	Log {base: %1$s} $config(base)
-	Log {floor: %1$s} $config(floor)
-	Log {ceil: %1$s} $config(ceil)
-	Log {scale: %1$s} $config(scale)
-	Log {height: %1$s} $config(height)
 }
 
 proc Cleanup {} {
