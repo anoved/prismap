@@ -257,7 +257,7 @@ proc ConfigOptions {argl} {
 				exit 0
 			}
 			default {
-				Abort {unrecognized option $arg}
+				Abort {unrecognized option %1$s} $arg
 			}
 		}
 	}
