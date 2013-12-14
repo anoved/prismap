@@ -212,8 +212,8 @@ proc ConfigOptions {argl} {
 				if {[scan [lindex $argl [incr a]] %f config(scale)] != 1} {
 					Abort {%1$s must be numeric.} $arg
 				}
-				if {$config(scale) == 0} {
-					Abort {%1$s must not be 0.} $arg
+				if {$config(scale) <= 0} {
+					Abort {%1$s must be > 0. (%2$s)} $arg $config(scale)
 				}
 			}
 			
@@ -291,7 +291,7 @@ proc ConfigDynamicDefaults {} {
 	# if height is set, it is used to compute the scale
 	# such that ceil would be extruded to height + base.
 	if {$config(height) ne {}} {
-		set config(scale) [expr {double($config(height) - $config(base)) / double($config(ceil))}]
+		set config(scale) [expr {($config(height) - $config(base)) / ($config(ceil) - $config(floor))}]
 	} else {
 		set config(height) [ExtrusionHeight $config(ceil)]
 	}
