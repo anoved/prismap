@@ -24,15 +24,15 @@ proc LoadShapefile {} {
 		Abort "Empty shapefile"
 	}
 	
-	lassign [$shp(file) info bounds] xmin ymin xmax ymax
+	lassign [$shp(file) info bounds] shp(xmin) shp(ymin) shp(xmax) shp(ymax)
 	
 	# translation to move bounding box to origin
-	set shp(x_offset) [expr {($xmax + $xmin) / -2.0}]
-	set shp(y_offset) [expr {($ymax + $ymin) / -2.0}]
+	set shp(x_offset) [expr {($shp(xmax) + $shp(xmin)) / -2.0}]
+	set shp(y_offset) [expr {($shp(ymax) + $shp(ymin)) / -2.0}]
 	
 	# bounding box dimensions
-	set shp(x_size) [expr {$xmax - $xmin}]
-	set shp(y_size) [expr {$ymax - $ymin}]
+	set shp(x_size) [expr {$shp(xmax) - $shp(xmin)}]
+	set shp(y_size) [expr {$shp(ymax) - $shp(ymin)}]
 	
 	# index of named attribute
 	if {[catch {$shp(file) fields index $config(attr)} shp(attr)]} {
@@ -74,13 +74,36 @@ proc ReformatCoords {coords} {
 	return [list [join $points ",\n"] [join $parts ",\n"]]
 }
 
-proc BaseBox {} {
+# xs ys zs - size
+# x y z - location of origin corner
+proc OutputCube {xs ys zs x y z} {
+	Output [format {translate([%f, %f, %f]) cube([%f, %f, %f]);} $x $y $z $xs $ys $zs]
+}
+
+proc Box {} {
 	global config
 	global shp
-	if {$config(box)} {
-		Output [format "// Base box:"]
-		Output [format "translate(\[%f, %f, 0\])" [expr {$shp(x_size) / -2.0}] [expr {$shp(y_size) / -2.0}]]
-		Output [format "cube(size=\[%s, %s, %s\]);"  $shp(x_size) $shp(y_size) $config(base)]
+	if {$config(box) != 0} {
+		Output "// Base box:"
+		OutputCube \
+				$shp(x_size) $shp(y_size) $config(base) \
+				$shp(xmin) $shp(ymin) 0
+	}
+}
+
+proc Walls {} {
+	global config
+	global shp
+	if {$config(walls) != 0} {
+		Output "// Walls:"
+		# "west" wall
+		OutputCube \
+				$config(walls) [expr {$shp(y_size) + $config(walls)}] $config(height) \
+				[expr {$shp(xmin) - $config(walls)}] $shp(ymin) 0
+		# "north" wall
+		OutputCube \
+				$shp(x_size) $config(walls) $config(height) \
+				$shp(xmin) $shp(ymax) 0
 	}
 }
 
@@ -92,12 +115,12 @@ proc ExtrusionHeight {measure} {
 proc Process {} {
 	global shp
 	
-	Output "union() {"
+	# combine everything and move it to the origin
+	Output [format "union() {translate(\[%s, %s, 0\]) {" $shp(x_offset) $shp(y_offset)]
 	
-	BaseBox
+	Box
+	Walls
 	
-	Output [format "translate(\[%s, %s, 0\]) {" $shp(x_offset) $shp(y_offset)]
-		
 	for {set i 0} {$i < $shp(count)} {incr i} {
 	
 		# calculate extrusion height
@@ -116,7 +139,7 @@ proc Process {} {
 	}
 	
 	# close translate and union
-	Output "}\n}"
+	Output "}}"
 }
 
 # Initializes config settings
@@ -132,6 +155,7 @@ proc ConfigInitialDefaults {} {
 		attr   {}
 		out    stdout
 		box    0
+		walls  0
 	}
 }
 
@@ -151,6 +175,16 @@ proc ConfigOptions {argl} {
 				}
 			}
 			--box {
+				set config(box) 1
+			}
+			--walls {
+				if {[scan [lindex $argl [incr a]] %f config(walls)] != 1} {
+					Abort {%1$s must be numeric.} $arg
+				}
+				if {$config(walls) < 0.1} {
+					Abort {%1$s must be >= 0.1 (%2$s)} $arg $config(walls)
+				}
+				# walls requires/implies base box
 				set config(box) 1
 			}
 			
@@ -257,8 +291,16 @@ proc ConfigDynamicDefaults {} {
 	# if height is set, it is used to compute the scale
 	# such that ceil would be extruded to height + base.
 	if {$config(height) ne {}} {
-		set config(scale) [expr {double($config(height)) / double($config(ceil))}]
+		set config(scale) [expr {double($config(height) - $config(base)) / double($config(ceil))}]
+	} else {
+		set config(height) [ExtrusionHeight $config(ceil)]
 	}
+	
+	Log {base: %1$s} $config(base)
+	Log {floor: %1$s} $config(floor)
+	Log {ceil: %1$s} $config(ceil)
+	Log {scale: %1$s} $config(scale)
+	Log {height: %1$s} $config(height)
 }
 
 proc Cleanup {} {
