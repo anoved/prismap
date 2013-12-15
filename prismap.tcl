@@ -17,12 +17,16 @@ proc OpenShapefile {path attr_name} {
 	global shp
 	
 	if {[catch {::shapetcl::shapefile $path} shp(file)]} {
-		Abort [format "Cannot load shapefile: %s" $shp(file)]
+		Abort {Cannot load shapefile: %1$s} $shp(file)
+	}
+	
+	if {[$shp(file) info type] ne "polygon"} {
+		Abort {Only polygon shapefiles are supported.}
 	}
 	
 	set shp(count) [$shp(file) info count]
 	if {$shp(count) < 1} {
-		Abort "Empty shapefile"
+		Abort "Shapefile contains no features."
 	}
 	
 	lassign [$shp(file) info bounds] shp(xmin) shp(ymin) shp(xmax) shp(ymax)
