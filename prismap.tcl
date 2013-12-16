@@ -199,13 +199,13 @@ proc Process {} {
 		set extrusion [ExtrusionHeight $measure]
 		
 		# get coordinates; may consist of multiple rings
-		lassign [ReformatCoords [$shp(file) coordinates read $i]] points parts
+		lassign [ReformatCoords [$shp(file) coordinates read $i]] points paths
 		
 		# Fortunately, OpenSCAD is able to sort out islands and holes itself,
 		# so we don't really need to perform any analysis of the coordinates.
-		Output "// Feature: %d, Value: %s, Parts: %d" $i $measure [llength $parts]
+		Output "// Feature: %d, Value: %s, Paths: %d" $i $measure [llength $paths]
 		Output "linear_extrude(height=%f)" $extrusion
-		Output "polygon(points=\[\n%s\n\], paths=\[\n%s\n\]);" $points $parts
+		Output "polygon(points=\[\n%s\n\], paths=\[\n%s\n\]);" $points $paths
 	}
 	
 	# close translate and union
