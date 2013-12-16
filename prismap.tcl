@@ -191,8 +191,11 @@ proc Process {} {
 	
 	for {set i 0} {$i < $shp(count)} {incr i} {
 	
-		# calculate extrusion height
+		# calculate extrusion height (or skip feature if null)
 		set measure [$shp(file) attributes read $i $shp(attr)]
+		if {$measure == {}} {
+			continue
+		}
 		set extrusion [ExtrusionHeight $measure]
 		
 		# get coordinates; may consist of multiple rings
