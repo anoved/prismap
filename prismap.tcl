@@ -183,7 +183,7 @@ proc Process {} {
 	global shp
 	
 	# everything is unioned and relocated to the model origin
-	Output "translate(\[%s, %s, 0\]) {\nunion {" $shp(x_offset) $shp(y_offset)
+	Output "translate(\[%s, %s, 0\]) {\nunion() {" $shp(x_offset) $shp(y_offset)
 	
 	# floor and wall surfaces will be generated if configured
 	Floor
