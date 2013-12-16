@@ -54,6 +54,12 @@ proc OpenShapefile {path attr_name} {
 		Abort $shp(attr)
 	}
 	
+	# assert that the selected attribute field is numeric 
+	set attr_type [lindex [$shp(file) fields list $shp(attr)] 0]
+	if {$attr_type ne "integer" && $attr_type ne "double"} {
+		Abort {Attribute field type is not numeric (type of "%1$s" is %2$s).} $attr_name $attr_type
+	}
+	
 	# min, max - attribute bounds
 	set shp(min) [set shp(max) [$shp(file) attribute read 0 $shp(attr)]]
 	for {set i 1} {$i < $shp(count)} {incr i} {
