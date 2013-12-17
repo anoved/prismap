@@ -111,7 +111,7 @@ proc Output {msg args} {
 	puts $out [format $msg {*}$args]
 }
 
-proc OutputCube {xs ys zs x y z} {
+proc OutputCube {x y z xs ys zs} {
 	# x, y, z - position of cube corner
 	Output {translate([%f, %f, %f])} $x $y $z
 	# xs, ys, zs - cube size
@@ -156,8 +156,8 @@ proc Floor {} {
 		# the floor's xy dimensions are the same as the map bounds;
 		# floor is positioned under map by translation to bounds min  
 		OutputCube \
-				$shp(x_size) $shp(y_size) $config(base) \
-				$shp(xmin) $shp(ymin) 0
+				$shp(xmin) $shp(ymin) 0 \
+				$shp(x_size) $shp(y_size) $config(base)
 	}
 }
 
@@ -166,14 +166,24 @@ proc Walls {} {
 	global shp
 	if {$config(walls) != 0} {
 		Output {// Walls:}
+		
 		# "west" wall (y size extended by wall width to make a clean corner w/north wall)
+		set w_x_loc  [expr {(($shp(x_size) / -2.0) * $config(xyscale)) - $config(walls)}]
+		set w_y_loc  [expr { ($shp(y_size) / -2.0) * $config(xyscale)}]
+		set w_x_size $config(walls)
+		set w_y_size [expr {($shp(y_size) * $config(xyscale)) + $config(walls)}]
 		OutputCube \
-				$config(walls) [expr {$shp(y_size) + $config(walls)}] $config(height) \
-				[expr {$shp(xmin) - $config(walls)}] $shp(ymin) 0
+				$w_x_loc $w_y_loc 0 \
+				$w_x_size $w_y_size $config(height)
+				
 		# "north" wall
+		set n_x_loc [expr {($shp(x_size) / -2.0) * $config(xyscale)}]
+		set n_y_loc [expr {($shp(y_size) / 2.0) * $config(xyscale)}]
+		set n_x_size [expr {$shp(x_size) * $config(xyscale)}]
+		set n_y_size $config(walls)
 		OutputCube \
-				$shp(x_size) $config(walls) $config(height) \
-				$shp(xmin) $shp(ymax) 0
+				$n_x_loc $n_y_loc 0 \
+				$n_x_size $n_y_size $config(height)
 	}
 }
 
@@ -186,14 +196,17 @@ proc ExtrusionHeight {measure} {
 }
 
 proc Process {} {
+	global config
 	global shp
 	
-	# everything is unioned and relocated to the model origin
-	Output "translate(\[%s, %s, 0\]) {\nunion() {" $shp(x_offset) $shp(y_offset)
+	Output "union() {"
 	
-	# floor and wall surfaces will be generated if configured
-	Floor
 	Walls
+	
+	Output "scale(\[%f, %f, 1\]) {" $config(xyscale) $config(xyscale)
+	Output "translate(\[%f, %f, 0\]) {" $shp(x_offset) $shp(y_offset)
+	
+	Floor
 	
 	for {set i 0} {$i < $shp(count)} {incr i} {
 	
@@ -214,8 +227,8 @@ proc Process {} {
 		Output "polygon(points=\[\n%s\n\], paths=\[\n%s\n\]);" $points $paths
 	}
 	
-	# close translate and union
-	Output "}}"
+	# close translate, scale, and union
+	Output "}\n}\n}"
 }
 
 proc ConfigDefaults {} {
@@ -226,11 +239,14 @@ proc ConfigDefaults {} {
 		upper   {}
 		height  {}
 		scale   1.0
+		x_out   {}
+		y_out   {}
+		xyscale 1.0
 		in      {}
 		attr    {}
 		out     {}
 		floor   0
-		walls   0
+		walls   0.0
 		verbose 0
 	}
 }
@@ -282,7 +298,7 @@ proc ConfigOptions {argl} {
 					Abort {Height must be numeric.}
 				}
 				if {$config(height) <= 0} {
-					Abort {Height must be > 0 (%2$s).} $config(height)
+					Abort {Height must be > 0 (%1$s).} $config(height)
 				}
 			}
 			-s - --scale {
@@ -290,9 +306,28 @@ proc ConfigOptions {argl} {
 					Abort {Scale must be numeric.}
 				}
 				if {$config(scale) <= 0} {
-					Abort {Scale must be > 0 (%2$s).} $config(scale)
+					Abort {Scale must be > 0 (%1$s).} $config(scale)
 				}
 			}
+			
+			-x - --xsize {
+				if {[scan [lindex $argl [incr a]] %f config(x_out)] != 1} {
+					Abort {X size limit must be numeric.}
+				}
+				if {$config(x_out) <= 0} {
+					Abort {X size limit must be > 0 (%1$s).} $config(x_out)
+				}
+			}
+			
+			-y - --ysize {
+				if {[scan [lindex $argl [incr a]] %f config(y_out)] != 1} {
+					Abort {Y size limit must be numeric.}
+				}
+				if {$config(y_out) <= 0} {
+					Abort {Y size limit must be > 0 (%1$s).} $config(y_out)
+				}
+			}
+			
 			-i - --in {
 				if {$config(in) ne {}} {
 					Abort {Input path set multiple times.}
@@ -364,6 +399,25 @@ proc ConfigCheck {} {
 	} else {
 		set config(height) [ExtrusionHeight $config(upper)]
 	}
+	
+	# by default, no xy scaling is applied
+	# xy scaling should only be applied to map features, not wall thickness.
+	# (As with base thickness, which should be exempt from height scaling)
+	
+	if {$config(x_out) ne {}} {
+		set config(xyscale) [expr {($config(x_out) - $config(walls)) / $shp(x_size)}]
+	}
+	
+	if {$config(y_out) ne {}} {
+		set y_scale [expr {($config(y_out) - $config(walls)) / $shp(y_size)}]
+		if {$config(x_out) ne {} && $y_scale < $config(xyscale)} {
+			set config(xyscale) $y_scale
+		} else {
+			set config(xyscale) $y_scale
+		}
+		# but not if $config(x_out) ne {} && $y_scale >= $xy_scale
+		# ie, leave xy_scale alone if already large enough to fit.
+	}
 }
 
 proc ConfigLog {} {
@@ -432,6 +486,14 @@ SCALING OPTIONS:
 -h/--height VALUE
 	Explicitly set the height of the extrusion ceiling (see --upper) in output
 	units. VALUE must be greater than zero. Overrides and recalculates --scale.
+
+-x/--xsize VALUE
+	Bounding box will be scaled to largest size that fits within VALUE output
+	units in the X dimension. If --ysize is also given, both constraints apply.
+
+-y/--ysize VALUE
+	Bounding box will be scaled to largest size that fits within VALUE output
+	units in the Y dimension. If --xsize is also given, both constraints apply. 
 
 MODEL OPTIONS:
 
