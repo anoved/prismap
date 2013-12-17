@@ -18,7 +18,7 @@ The model display above was generated with the following options:
 	    --base 0.1                  \
 	    --floor                     \
 	    --lower 0                   \
-	    --upper 30                  \
+	    --upper 30
 
 Note that this example includes disconnected "island" features which may be too small to print successfully. Some prep work to prune unnecessary detail will typically be needed to prepare shapefiles for printing.
 
