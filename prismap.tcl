@@ -377,8 +377,85 @@ proc ConfigLog {} {
 }
 
 proc PrintUsage {} {
-	puts [::msgcat::mc {Usage: prismap [OPTIONS]}]
-	# placeholder
+	puts [::msgcat::mc {Usage: %1$s OPTIONS
+
+Prismap generates an OpenSCAD script representing the polygon features of the
+input shapefile extruded proportional to the values of a named attribute field.
+The intent is to produce tangible 3D printable models of the conceptual data
+model beneath choropleth thematic map design - the "prism map".
+
+Preprocessing is advisable to prepare shapefiles for conversion with Prismap.
+For printing purposes, all features should comprise a contiguous region. Small
+holes or islands should be pruned and complex boundaries shoulds be simplified.
+
+Feature coordinates are retained without modification. If your shapefile's
+coordinate system is not suited for Cartesian display, consider working with a
+reprojected version instead. (You can rescale OpenSCAD output before printing.)
+
+REQUIRED OPTIONS:
+
+-i/--in PATH
+    Read input shapefile from PATH. PATH may identify any basic shapefile part
+    (.shp, .shx, or .dbf) or the base name (minus suffix), but all three parts
+    must be present. Only xy polygon shapefiles are supported.
+
+-a/--attribute NAME
+    Extrude shapefile features according to the value of the attribute field
+    NAME. The attribute field type must be numeric (integer or double).
+
+-o/--out PATH
+	Write OpenSCAD script to file at PATH. If PATH is a single hyphen character
+	("-"), the script is written to standard output.
+
+DATA RANGE OPTIONS:
+
+Use these options to explicitly set fixed bounds for the extrusion. This is
+useful to ensure that multiple models (representing a time series, for example)
+are output at the same scale and are therefore comparable.
+
+-l/--lower VALUE
+	Set the lower bound of the extrusion - the "floor" height. VALUE must be
+	less than or equal to the minimum value of the attribute. The default
+	VALUE is the minimum value of the attribute.
+
+-u/--upper VALUE
+	Set the upper bound of the extrusion - the "ceiling" height. VALUE must be
+	greater than or equal to the maximum value of the attribute. The default
+	VALUE is the maximum value of the attribute.
+
+SCALING OPTIONS:
+
+-s/--scale FACTOR
+	Scaling FACTOR multiplied by attribute values to determine feature height
+	in output units. FACTOR must be greater than zero. Default FACTOR is 1.0.
+
+-h/--height VALUE
+	Explicitly set the height of the extrusion ceiling (see --upper) in output
+	units. VALUE must be greater than zero. Overrides and recalculates --scale.
+
+MODEL OPTIONS:
+
+-b/--base THICKNESS
+	Set the THICKNESS in output units of the base layer. A base layer is always
+	present. THICKNESS must be greater than or equal to 0.1. Default is 1.0.
+
+-f/--floor
+	Expand the base layer to fill the rectangular bounding box of the features.
+
+-w/--walls THICKNESS
+	Include walls on two sides of the model, with THICKNESS in output unit. 
+	Wall THICKNESS must be greater than or equal to 0.1. Default is 1.0. The
+	walls are located adjacent to the -x and +y sides of the bounding box and
+	extend to the extrusion ceiling (see --upper).
+
+MISCELLANEOUS OPTIONS:
+
+-v/--verbose
+	Print configuration values to standard error.
+
+--help
+	Display this usage message.
+} [file tail [info script]]]
 }
 
 proc Log {msg args} {
