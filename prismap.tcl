@@ -422,13 +422,20 @@ proc ConfigCheck {} {
 
 proc ConfigLog {} {
 	global config
+	global shp
 	if {$config(verbose)} {
 		# unordered report of config values
+		Log "Config settings:"
 		foreach {option value} [array get config] {
+			Log "$option: $value"
+		}
+		Log "Shapefile info:"
+		foreach {option value} [array get shp] {
 			Log "$option: $value"
 		}
 	}
 }
+
 
 proc PrintUsage {} {
 	puts [::msgcat::mc {Usage: %1$s OPTIONS
@@ -513,7 +520,7 @@ MODEL OPTIONS:
 MISCELLANEOUS OPTIONS:
 
 -v/--verbose
-	Print configuration values to standard error.
+	Print configuration values and shapefile info to standard error.
 
 --help
 	Display this usage message.
