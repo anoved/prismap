@@ -381,7 +381,7 @@ proc ConfigOptions {argl} {
 				}
 				set config(out) [lindex $argl [incr a]]
 			}
-			-v - --verbose {
+			--debug {
 				set config(verbose) 1
 			}
 			--help {
@@ -558,7 +558,7 @@ MODEL OPTIONS:
 
 MISCELLANEOUS OPTIONS:
 
--v/--verbose
+--debug
 	Print configuration values and shapefile info to standard error.
 
 --help
