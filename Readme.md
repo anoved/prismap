@@ -49,8 +49,12 @@ Here is the output of `prismap --help`:
 		must be present. Only xy polygon shapefiles are supported.
 	
 	-a/--attribute NAME
+	-d/--default VALUE
 		Extrude shapefile features according to the value of the attribute field
-		NAME. The attribute field type must be numeric (integer or double).
+		NAME or, if NAME is not specified, the constant default VALUE. At least one
+		of these options must be specified. If both are specified, the default
+		value will be used only where there attribute field value is null.
+		The attribute field type must be numeric (integer or double).
 	
 	-o/--out PATH
 		Write OpenSCAD script to file at PATH. If PATH is a single hyphen character
@@ -82,6 +86,14 @@ Here is the output of `prismap --help`:
 		Explicitly set the height of the extrusion ceiling (see --upper) in output
 		units. VALUE must be greater than zero. Overrides and recalculates --scale.
 	
+	-x/--xsize VALUE
+		Bounding box will be scaled to largest size that fits within VALUE output
+		units in the X dimension. If --ysize is also given, both constraints apply.
+	
+	-y/--ysize VALUE
+		Bounding box will be scaled to largest size that fits within VALUE output
+		units in the Y dimension. If --xsize is also given, both constraints apply. 
+	
 	MODEL OPTIONS:
 	
 	-b/--base THICKNESS
@@ -99,8 +111,8 @@ Here is the output of `prismap --help`:
 	
 	MISCELLANEOUS OPTIONS:
 	
-	-v/--verbose
-		Print configuration values to standard error.
+	--debug
+		Print configuration values and shapefile info to standard error.
 	
 	--help
 		Display this usage message.
