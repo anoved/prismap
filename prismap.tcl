@@ -5,23 +5,23 @@ package require msgcat
 
 ::msgcat::mcload [file join [file dirname [info script]] {msgs}]
 
-proc Prismap {arglist} {
+proc Prismap {} {
 	global config
 	
 	# creates initial config array
 	ConfigDefaults
 	
 	# parses option and updates config
-	ConfigOptions $arglist
+	ConfigOptions $::argv
 	
 	# reads shapefile and creates shp array
-	OpenShapefile $config(in) $config(attr)
+	OpenShapefile
 	
 	# finalize config values that depend on shp data
 	ConfigCheck
 	
 	ConfigLog
-	OpenOutput $config(out)
+	OpenOutput
 	
 	# process each feature in shapefile,
 	# generating an OpenSCAD polygon outline from its geometry
@@ -32,10 +32,11 @@ proc Prismap {arglist} {
 	CloseShapefile
 }
 
-proc OpenShapefile {path attr_name} {
+proc OpenShapefile {} {
+	global config
 	global shp
 	
-	if {[catch {::shapetcl::shapefile $path} shp(file)]} {
+	if {[catch {::shapetcl::shapefile $config(in)} shp(file)]} {
 		Abort {Cannot load shapefile: %1$s} $shp(file)
 	}
 	
@@ -48,27 +49,37 @@ proc OpenShapefile {path attr_name} {
 	if {$shp(count) < 1} {
 		Abort {Shapefile contains no features.}
 	}
-
-	# attr - index of named attribute
-	if {[catch {$shp(file) fields index $attr_name} shp(attr)]} {
-		Abort $shp(attr)
-	}
 	
-	# assert that the selected attribute field is numeric 
-	set attr_type [lindex [$shp(file) fields list $shp(attr)] 0]
-	if {$attr_type ne "integer" && $attr_type ne "double"} {
-		Abort {Attribute field type is not numeric (type of "%1$s" is %2$s).} $attr_name $attr_type
-	}
-	
-	# min, max - attribute bounds
-	set shp(min) [set shp(max) [$shp(file) attribute read 0 $shp(attr)]]
-	for {set i 1} {$i < $shp(count)} {incr i} {
-		set value [$shp(file) attribute read $i $shp(attr)]
-		if {$value < $shp(min)} {
-			set shp(min) $value
+	if {$config(attr) == {}} {
+		
+		# if no attribute field is given, set bounds to default
+		set shp(attr) {}
+		set shp(min) $config(default)
+		set shp(max) $config(default)
+		
+	} else {
+		
+		# attr - index of named attribute
+		if {[catch {$shp(file) fields index $config(attr)} shp(attr)]} {
+			Abort $shp(attr)
 		}
-		if {$value > $shp(max)} {
-			set shp(max) $value
+	
+		# assert that the selected attribute field is numeric 
+		set attr_type [lindex [$shp(file) fields list $shp(attr)] 0]
+		if {$attr_type ne "integer" && $attr_type ne "double"} {
+			Abort {Attribute field type is not numeric (type of "%1$s" is %2$s).} $attr_name $attr_type
+		}
+		
+		# min, max - attribute bounds
+		set shp(min) [set shp(max) [$shp(file) attribute read 0 $shp(attr)]]
+		for {set i 1} {$i < $shp(count)} {incr i} {
+			set value [$shp(file) attribute read $i $shp(attr)]
+			if {$value < $shp(min)} {
+				set shp(min) $value
+			}
+			if {$value > $shp(max)} {
+				set shp(max) $value
+			}
 		}
 	}
 	
@@ -90,11 +101,12 @@ proc CloseShapefile {} {
 	$shp(file) close
 }
 
-proc OpenOutput {path} {
+proc OpenOutput {} {
+	global config
 	global out
-	if {$path eq "-"} {
+	if {$config(out) eq "-"} {
 		set out stdout
-	} elseif {[catch {open $path w} out]} {
+	} elseif {[catch {open $config(out) w} out]} {
 		Abort $out
 	}
 }
@@ -195,6 +207,23 @@ proc ExtrusionHeight {measure} {
 	return [expr {$config(base) + ($config(scale) * (double($measure) - $config(lower)))}]
 }
 
+proc FeatureMeasure {id} {
+	global config
+	global shp
+	if {$config(attr) == {}} {
+		# if attribute field is not specified, default value must be
+		return $config(default)
+	} else {
+		set value [$shp(file) attributes read $id $shp(attr)]
+		if {$value == {}} {
+			# default may be {} as well, but at least we tried.
+			return $config(default)
+		} else {
+			return $value
+		}
+	}
+}
+
 proc Process {} {
 	global config
 	global shp
@@ -211,7 +240,7 @@ proc Process {} {
 	for {set i 0} {$i < $shp(count)} {incr i} {
 	
 		# calculate extrusion height (or skip feature if null)
-		set measure [$shp(file) attributes read $i $shp(attr)]
+		set measure [FeatureMeasure $i]
 		if {$measure == {}} {
 			continue
 		}
@@ -244,6 +273,7 @@ proc ConfigDefaults {} {
 		xyscale 1.0
 		in      {}
 		attr    {}
+		default {}
 		out     {}
 		floor   0
 		walls   0.0
@@ -340,6 +370,11 @@ proc ConfigOptions {argl} {
 				}
 				set config(attr) [lindex $argl [incr a]]
 			}
+			-d - --default {
+				if {[scan [lindex $argl [incr a]] %f config(default)] != 1} {
+					Abort {Default attribute value must be numeric.}
+				}
+			}
 			-o - --out {
 				if {$config(out) ne {}} {
 					Abort {Output path set multiple times.}
@@ -361,13 +396,13 @@ proc ConfigOptions {argl} {
 	
 	# check for required arguments
 	if {$config(in) == {}} {
-		Abort {Shapefile path must be specified with -i or --in.}
+		Abort {Shapefile path must be specified with --in.}
 	}
-	if {$config(attr) == {}} {
-		Abort {Attribute name must be specified with -a or --attribute.}
+	if {$config(attr) == {} && $config(default) == {}} {
+		Abort {Attribute field name or default value must be specified with --attribute or --default, respectively.}
 	}
 	if {$config(out) == {}} {
-		Abort {Output path must be specified with -o or --output.}
+		Abort {Output path must be specified with --output.}
 	}
 }
 
@@ -461,8 +496,12 @@ REQUIRED OPTIONS:
     must be present. Only xy polygon shapefiles are supported.
 
 -a/--attribute NAME
+-d/--default VALUE
     Extrude shapefile features according to the value of the attribute field
-    NAME. The attribute field type must be numeric (integer or double).
+    NAME or, if NAME is not specified, the constant default VALUE. At least one
+    of these options must be specified. If both are specified, the default
+    value will be used only where there attribute field value is null.
+    The attribute field type must be numeric (integer or double).
 
 -o/--out PATH
 	Write OpenSCAD script to file at PATH. If PATH is a single hyphen character
@@ -536,4 +575,4 @@ proc Abort {msg args} {
 	exit 1
 }
 
-Prismap $argv
+Prismap
