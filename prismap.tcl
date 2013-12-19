@@ -123,11 +123,52 @@ proc Output {msg args} {
 	puts $out [format $msg {*}$args]
 }
 
-proc OutputCube {x y z xs ys zs} {
-	# x, y, z - position of cube corner
-	Output {translate([%f, %f, %f])} $x $y $z
-	# xs, ys, zs - cube size
-	Output {cube([%f, %f, %f]);} $xs $ys $zs
+proc OutputSettings_Features {} {
+	global config
+	global shp
+	
+	Output "
+/* \[Data\] */
+
+// Must be less than or equal to the minimum data value.
+lower_bound = %f;
+
+// Must be greater than or equal to the maximum data value.
+upper_bound = %f;" $config(lower) $config(upper)
+
+	# output default data values
+	for {set i 0} {$i < $shp(count)} {incr i} {
+		#set label [format "// %s" getlabelattribute]
+		set measure [FeatureMeasure $i]
+		Output [format "\ndata%d = %f;\n" $i $measure]
+	}
+}
+
+proc OutputSettings_Model {} {
+	global config
+	Output "
+// preview\[view:south, tilt:top diagonal\]
+
+/* \[Model Options\] */
+
+model_x_max = %f;
+
+model_y_max = %f;
+
+model_z_max = %f;
+
+// Set to 0 to disable. Defaults to wall thickness if off and wall thickness is nonzero.
+floor_thickness = 1; // \[0:10\]
+
+// Set to 0 to disable.
+wall_thickness = 1; // \[0:10\]
+" $config(x_out) $config(y_out) $config(height)
+
+}
+
+proc OutputSettings {} {
+	OutputSettings_Features
+	OutputSettings_Model
 }
 
 proc ReformatCoords {coords} {
@@ -160,53 +201,26 @@ proc ReformatCoords {coords} {
 	return [list [join $points ",\n"] [join $paths ",\n"]]
 }
 
-proc Floor {} {
-	global config
+proc OutputFloorModule {} {
 	global shp
-	if {$config(floor) != 0} {
-		Output {// Floor:}
-		# the floor's xy dimensions are the same as the map bounds;
-		# floor is positioned under map by translation to bounds min  
-		OutputCube \
-				$shp(xmin) $shp(ymin) 0 \
-				$shp(x_size) $shp(y_size) $config(base)
-	}
+	Output "module Floor() {
+	translate(\[%f, %f, 0\])
+		cube(\[%f, %f, floor_thickness > 0 ? floor_thickness : wall_thickness\]);
+}" $shp(xmin) $shp(ymin) $shp(x_size) $shp(y_size)
 }
 
-proc Walls {} {
-	global config
+proc OutputWallsModule {} {
 	global shp
-	if {$config(walls) != 0} {
-		Output {// Walls:}
-		
-		# "west" wall (y size extended by wall width to make a clean corner w/north wall)
-		set w_x_loc  [expr {(($shp(x_size) / -2.0) * $config(xyscale)) - $config(walls)}]
-		set w_y_loc  [expr { ($shp(y_size) / -2.0) * $config(xyscale)}]
-		set w_x_size $config(walls)
-		set w_y_size [expr {($shp(y_size) * $config(xyscale)) + $config(walls)}]
-		OutputCube \
-				$w_x_loc $w_y_loc 0 \
-				$w_x_size $w_y_size $config(height)
-				
-		# "north" wall
-		set n_x_loc [expr {($shp(x_size) / -2.0) * $config(xyscale)}]
-		set n_y_loc [expr {($shp(y_size) / 2.0) * $config(xyscale)}]
-		set n_x_size [expr {$shp(x_size) * $config(xyscale)}]
-		set n_y_size $config(walls)
-		OutputCube \
-				$n_x_loc $n_y_loc 0 \
-				$n_x_size $n_y_size $config(height)
-	}
+	Output "module Walls() {
+	translate(\[((%f / -2) * xy_scale) - wall_thickness, (%f / -2) * xy_scale, 0\])
+	cube(\[wall_thickness, (%f * xy_scale) + wall_thickness, model_z_max\]);
+	translate(\[(%f / -2) * xy_scale, (%f / 2) * xy_scale, 0\])
+	cube(\[%f * xy_scale, wall_thickness, model_z_max\]);}" \
+	$shp(x_size) $shp(y_size) $shp(y_size) $shp(x_size) $shp(y_size) $shp(x_size)
 }
 
-proc ExtrusionHeight {measure} {
-	global config
-	#   (measure - lower) yields data height in attribute units
-	#  ((measure - lower) * scale) yields data height in model units
-	# (((measure - lower) * scale) + base) yields total height in model units
-	return [expr {$config(base) + ($config(scale) * (double($measure) - $config(lower)))}]
-}
-
+# default feature now considered to be 0?
+# don't want to omit features altogether since, since customizers may set values
 proc FeatureMeasure {id} {
 	global config
 	global shp
@@ -224,40 +238,64 @@ proc FeatureMeasure {id} {
 	}
 }
 
+proc OutputFeatureModule {id} {
+	global shp
+	lassign [ReformatCoords [$shp(file) coordinates read $id]] points paths
+	Output "module feature%d(height) {
+	if (height > 0) {
+	linear_extrude(height=height)
+	polygon(points=\[
+	%s
+	\], paths=\[
+	%s
+	\]);
+	}}" $id $points $paths
+}
+
+
+# outputs featureN() modules and main Prismap() module.
 proc Process {} {
-	global config
 	global shp
 	
-	Output "union() {"
+	OutputSettings
 	
-	Walls
+	Output "z_scale = (model_z_max - floor_thickness) / (upper_bound - lower_bound);
+x_scale = (model_x_max - wall_thickness) / %f;
+y_scale = (model_y_max - wall_thickness) / %f;
+xy_scale = min(x_scale, y_scale);
+function extrusionheight(value) = floor_thickness + (z_scale * (value - lower_bound));
+Prismap();
+" \
+$shp(x_size) $shp(y_size)
 	
-	Output "scale(\[%f, %f, 1\]) {" $config(xyscale) $config(xyscale)
-	Output "translate(\[%f, %f, 0\]) {" $shp(x_offset) $shp(y_offset)
+	OutputFloorModule
+	OutputWallsModule
 	
-	Floor
-	
+	set featureModules {}
 	for {set i 0} {$i < $shp(count)} {incr i} {
-	
-		# calculate extrusion height (or skip feature if null)
-		set measure [FeatureMeasure $i]
-		if {$measure == {}} {
-			continue
-		}
-		set extrusion [ExtrusionHeight $measure]
 		
-		# get coordinates; may consist of multiple rings
-		lassign [ReformatCoords [$shp(file) coordinates read $i]] points paths
 		
-		# Fortunately, OpenSCAD is able to sort out islands and holes itself,
-		# so we don't really need to perform any analysis of the coordinates.
-		Output "// Feature: %d, Value: %s, Paths: %d" $i $measure [llength $paths]
-		Output "linear_extrude(height=%f)" $extrusion
-		Output "polygon(points=\[\n%s\n\], paths=\[\n%s\n\]);" $points $paths
+		OutputFeatureModule $i
+		append featureModules [format "\t\t\t\tfeature%d(extrusionheight(data%d));\n" $i $i]
 	}
 	
-	# close translate, scale, and union
-	Output "}\n}\n}"
+	Output "
+module Prismap() {
+	union() {
+		if (wall_thickness > 0) {
+			Walls();
+		}
+		scale(\[xy_scale, xy_scale, 1\]) {
+			translate(\[%f, %f, 0\]) {
+				if (floor_thickness > 0 || wall_thickness > 0) {
+					Floor();
+				}
+				
+%s
+			}
+		}
+	}
+}" $shp(x_offset) $shp(y_offset) $featureModules
 }
 
 proc ConfigDefaults {} {
@@ -273,7 +311,7 @@ proc ConfigDefaults {} {
 		xyscale 1.0
 		in      {}
 		attr    {}
-		default {}
+		default 0
 		out     {}
 		floor   0
 		walls   0.0
@@ -398,6 +436,8 @@ proc ConfigOptions {argl} {
 	if {$config(in) == {}} {
 		Abort {Shapefile path must be specified with --in.}
 	}
+	
+	# if we set default default to 0, don't need to require attribute anymore... (todo)
 	if {$config(attr) == {} && $config(default) == {}} {
 		Abort {Attribute field name or default value must be specified with --attribute or --default, respectively.}
 	}
@@ -427,13 +467,18 @@ proc ConfigCheck {} {
 		Abort {Upper bound value (%1$s) must be >= maximum attribute value (%2$s).} $config(upper) $shp(max)
 	}
 	
+	# todo - remove explicit scale setting. Go with explicit xyz bounds only.
+	
 	# if height is set, it is used to compute the scale such that extruded height of a
 	# value at the upper bound of data would be exactly at the upper bound of extrusion 
 	if {$config(height) ne {}} {
 		set config(scale) [expr {($config(height) - $config(base)) / ($config(upper) - $config(lower))}]
 	} else {
-		set config(height) [ExtrusionHeight $config(upper)]
+		#set config(height) [ExtrusionHeight $config(upper)]
 	}
+	
+	# todo: x_out, y_out, and height must have reasonable defaults or be set explicitly
+	
 	
 	# by default, no xy scaling is applied
 	# xy scaling should only be applied to map features, not wall thickness.
