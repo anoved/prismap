@@ -79,7 +79,7 @@ x_extent = 13.533256;
 
 y_extent = 8.521853;
 
-z_scale = (z_size_limit - floor_thickness) / (upper_bound - lower_bound);
+z_scale = (z_size_limit - ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness)) / (upper_bound - lower_bound);
 
 x_scale = (x_size_limit - wall_thickness) / x_extent;
 
@@ -87,7 +87,7 @@ y_scale = (y_size_limit - wall_thickness) / y_extent;
 
 xy_scale = min(x_scale, y_scale);
 
-function extrusionheight(value) = floor_thickness + (z_scale * (value - lower_bound));
+function extrusionheight(value) = ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness) + (z_scale * (value - lower_bound));
 
 Prismap();
 
