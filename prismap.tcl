@@ -35,8 +35,18 @@ floor_thickness = %f; // [0:10]
 wall_thickness = %f; // [0:10]
 "
 
-functions
+scriptSetup
 "/* \[Hidden\] */
+
+data = \[data0, data1, data2, data3, data4, data5, data6, data7, data8\];
+for (dv = data) {
+	if (lower_bound > dv) {
+		echo(\"Warning: lower bound should be less than or equal to minimum data value.\");
+	}
+	if (upper_bound < dv) {
+		echo(\"Warning: upper bound should be greater than or equal to maximum data value.\");
+	}
+}
 
 if (floor_thickness >= model_z_max) {
 	echo(\"Warning: floor thickness should be less than model Z max.\");
@@ -315,7 +325,7 @@ proc Process {} {
 	
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls)
-	Output $template(functions) $shp(x_size) $shp(y_size)
+	Output $template(scriptSetup) $shp(x_size) $shp(y_size)
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
 	
