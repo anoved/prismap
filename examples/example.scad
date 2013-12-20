@@ -4,56 +4,56 @@
 /* [Data] */
 
 // Must be less than or equal to the minimum data value.
-lower_bound = 0.000000;
+lower_bound = 0;
 
 // Must be greater than or equal to the maximum data value.
-upper_bound = 30.000000;
+upper_bound = 30;
 
 // Connecticut
-data0 = 14.000000;
+data0 = 14;
 
 // Massachusetts
-data1 = 21.000000;
+data1 = 21;
 
 // Maine
-data2 = 12.000000;
+data2 = 12;
 
 // New Hampshire
-data3 = 15.000000;
+data3 = 15;
 
 // New Jersey
-data4 = 6.000000;
+data4 = 6;
 
 // New York
-data5 = 28.000000;
+data5 = 28;
 
 // Pennsylvania
-data6 = 17.000000;
+data6 = 17;
 
 // Rhode Island
-data7 = 20.000000;
+data7 = 20;
 
 // Vermont
-data8 = 12.000000;
+data8 = 12;
 
 // preview[view:south, tilt:top diagonal]
 
 /* [Model Options] */
 
 // Maximum x size in output units (typically mm).
-x_size_limit = 80.000000;
+x_size_limit = 80;
 
 // Maximum y size in output units (typically mm).
-y_size_limit = 80.000000;
+y_size_limit = 80;
 
 // Maximum z size in output units (typically mm).
-z_size_limit = 10.000000;
+z_size_limit = 10;
 
 // Must be less than z size limit. Set to 0 to disable floor. (Floor thickness is automatically set to wall thickness if floor is disabled and walls are enabled.)
-floor_thickness = 1.000000; // [0:10]
+floor_thickness = 1; // [0:10]
 
 // Must be less than x and y size limits. Set to 0 to disable walls.
-wall_thickness = 1.000000; // [0:10]
+wall_thickness = 1; // [0:10]
 
 /* [Hidden] */
 
@@ -75,9 +75,9 @@ if (wall_thickness >= x_size_limit || wall_thickness >= y_size_limit) {
 	echo("Warning: wall thickness should be less than x and y size limit.");
 }
 
-x_extent = 13.533256;
+x_extent = 13.5333;
 
-y_extent = 8.521853;
+y_extent = 8.52185;
 
 z_scale = (z_size_limit - ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness)) / (upper_bound - lower_bound);
 
@@ -92,7 +92,7 @@ function extrusionheight(value) = ((floor_thickness == 0 && wall_thickness > 0) 
 Prismap();
 
 module Floor() {
-	translate([-80.520278, 38.941141, 0])
+	translate([-80.5203, 38.9411, 0])
 		cube([x_extent, y_extent, floor_thickness > 0 ? floor_thickness : wall_thickness]);
 }
 
@@ -804,7 +804,7 @@ module Prismap() {
 		if (wall_thickness > 0) {
 			Walls();
 		}
-		scale([xy_scale, xy_scale, 1]) translate([73.753650, -43.202068, 0]) {
+		scale([xy_scale, xy_scale, 1]) translate([73.7537, -43.2021, 0]) {
 			if (floor_thickness > 0 || wall_thickness > 0) {
 				Floor();
 			}

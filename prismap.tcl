@@ -16,10 +16,10 @@ dataOptions
 "/* \[Data\] */
 
 // Must be less than or equal to the minimum data value.
-lower_bound = %f;
+lower_bound = %g;
 
 // Must be greater than or equal to the maximum data value.
-upper_bound = %f;
+upper_bound = %g;
 %s"
 
 modelOptions
@@ -28,19 +28,19 @@ modelOptions
 /* \[Model Options\] */
 
 // Maximum x size in output units (typically mm).
-x_size_limit = %f;
+x_size_limit = %g;
 
 // Maximum y size in output units (typically mm).
-y_size_limit = %f;
+y_size_limit = %g;
 
 // Maximum z size in output units (typically mm).
-z_size_limit = %f;
+z_size_limit = %g;
 
 // Must be less than z size limit. Set to 0 to disable floor. (Floor thickness is automatically set to wall thickness if floor is disabled and walls are enabled.)
-floor_thickness = %f; // [0:10]
+floor_thickness = %g; // [0:10]
 
 // Must be less than x and y size limits. Set to 0 to disable walls.
-wall_thickness = %f; // [0:10]
+wall_thickness = %g; // [0:10]
 "
 
 scriptSetup
@@ -64,9 +64,9 @@ if (wall_thickness >= x_size_limit || wall_thickness >= y_size_limit) {
 	echo(\"Warning: wall thickness should be less than x and y size limit.\");
 }
 
-x_extent = %f;
+x_extent = %g;
 
-y_extent = %f;
+y_extent = %g;
 
 z_scale = (z_size_limit - ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness)) / (upper_bound - lower_bound);
 
@@ -92,7 +92,7 @@ wallsModule
 
 floorModule
 "module Floor() {
-	translate(\[%f, %f, 0\])
+	translate(\[%g, %g, 0\])
 		cube(\[x_extent, y_extent, floor_thickness > 0 ? floor_thickness : wall_thickness\]);
 }
 "
@@ -115,7 +115,7 @@ prismapModule
 		if (wall_thickness > 0) {
 			Walls();
 		}
-		scale(\[xy_scale, xy_scale, 1\]) translate(\[%f, %f, 0\]) {
+		scale(\[xy_scale, xy_scale, 1\]) translate(\[%g, %g, 0\]) {
 			if (floor_thickness > 0 || wall_thickness > 0) {
 				Floor();
 			}
@@ -328,7 +328,7 @@ proc Process {} {
 	
 	# prepare default data definitions
 	for {set i 0} {$i < $shp(count)} {incr i} {
-		append dataDefinitions [format "\n%sdata%d = %f;\n" [FeatureLabel $i] $i [FeatureMeasure $i]]
+		append dataDefinitions [format "\n%sdata%d = %g;\n" [FeatureLabel $i] $i [FeatureMeasure $i]]
 		lappend dataVars [format "data%d" $i]
 	}
 	
