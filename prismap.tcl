@@ -38,7 +38,7 @@ wall_thickness = %f; // [0:10]
 scriptSetup
 "/* \[Hidden\] */
 
-data = \[data0, data1, data2, data3, data4, data5, data6, data7, data8\];
+data = \[%s\];
 for (dv = data) {
 	if (lower_bound > dv) {
 		echo(\"Warning: lower bound should be less than or equal to minimum data value.\");
@@ -321,11 +321,12 @@ proc Process {} {
 	
 	for {set i 0} {$i < $shp(count)} {incr i} {
 		append dataDefinitions [format "\n%sdata%d = %f;\n" [FeatureLabel $i] $i [FeatureMeasure $i]]
+		lappend dataVars [format "data%d" $i]
 	}
 	
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls)
-	Output $template(scriptSetup) $shp(x_size) $shp(y_size)
+	Output $template(scriptSetup) [join $dataVars ", "] $shp(x_size) $shp(y_size)
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
 	
