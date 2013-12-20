@@ -1,24 +1,21 @@
 # Prismap
 
-This script generates an [OpenSCAD](http://www.openscad.org/) model of a polygon shapefile with features extruded proportional to designated attribute values. Using OpenSCAD, the extruded "prism map" can be exported to STL format suitable for 3D printing. It is a work in progress.
-
-The end goal is to generate prism map templates configurable with [MakerBot Thingiverse Customizer](http://www.thingiverse.com/apps/customizer).
+This script generates an [OpenSCAD](http://www.openscad.org/) model of a polygon shapefile with features extruded proportional to designated attribute values. Using OpenSCAD, the extruded "prism map" can be exported to STL format suitable for 3D printing. Prismap's OpenSCAD output is also compatible with [MakerBot Thingiverse Customizer](http://www.thingiverse.com/apps/customizer), meaning the models can be modified using the web interface provided by Customizer. This allows other people to easily remix Prismap map templates with their own data.
 
 ## Example
 
-![example prismap model](examples/screenshot.png)
+[![example prismap model](examples/screenshot.png)](examples/example.scad)
 
-The model display above was generated with the following options:
+The model displayed above was generated with the following options:
 
 	./prismap.tcl                   \
 	    --in examples/northeast.shp \
-	    --attribute Measure         \
 	    --out examples/example.scad \
-	    --height 5                  \
-	    --base 0.1                  \
-	    --floor                     \
-	    --lower 0                   \
-	    --upper 30
+	    --attribute Measure         \
+	    --names name                \
+	    --lower 0 --upper 30        \
+	    --floor 1 --walls 1         \
+	    -x 80 -y 80 -z 10 
 
 Note that this example includes disconnected "island" features which may be too small to print successfully. Some prep work to prune unnecessary detail will typically be needed to prepare shapefiles for printing.
 
@@ -30,81 +27,80 @@ Here is the output of `prismap --help`:
 	
 	Prismap generates an OpenSCAD script representing the polygon features of the
 	input shapefile extruded proportional to the values of a named attribute field.
-	The intent is to produce tangible 3D printable models of the conceptual data
-	model beneath choropleth thematic map design - the "prism map".
+	The OpenSCAD output is compatible with Makerbot Thingiverse Customizer.
 	
 	Preprocessing is advisable to prepare shapefiles for conversion with Prismap.
-	For printing purposes, all features should comprise a contiguous region. Small
-	holes or islands should be pruned and complex boundaries shoulds be simplified.
-	
-	Feature coordinates are retained without modification. If your shapefile's
-	coordinate system is not suited for Cartesian display, consider working with a
-	reprojected version instead. (You can rescale OpenSCAD output before printing.)
+	Small holes or islands should be pruned and complex boundaries shoulds be
+	simplified. Feature coordinates are retained without modification. If your
+	shapefile's coordinate system is not suited for Cartesian display, consider
+	working with a reprojected version instead.
 	
 	REQUIRED OPTIONS:
 	
 	-i/--in PATH
-		Read input shapefile from PATH. PATH may identify any basic shapefile part
-		(.shp, .shx, or .dbf) or the base name (minus suffix), but all three parts
-		must be present. Only xy polygon shapefiles are supported.
-	
-	-a/--attribute NAME
-	-d/--default VALUE
-		Extrude shapefile features according to the value of the attribute field
-		NAME or, if NAME is not specified, the constant default VALUE. At least one
-		of these options must be specified. If both are specified, the default
-		value will be used only where there attribute field value is null.
-		The attribute field type must be numeric (integer or double).
+	    Read input shapefile from PATH. PATH may identify any basic shapefile part
+	    (.shp, .shx, or .dbf) or the base name (minus suffix), but all three parts
+	    must be present. Only xy polygon shapefiles are supported.
 	
 	-o/--out PATH
 		Write OpenSCAD script to file at PATH. If PATH is a single hyphen character
 		("-"), the script is written to standard output.
 	
-	DATA RANGE OPTIONS:
+	ATTRIBUTE OPTIONS:
+	
+	Features are extruded according to their attribute value.
+	
+	-d/--default VALUE
+		Set the default attribute value. Default values are used if no --attribute
+		field is specified or in place of any null attribute values encountered.
+		The default VALUE is 0.
+	
+	-a/--attribute FIELD
+		Read attribute values from the named FIELD. The attribute field type must
+		be numeric (integer or double).
+	
+	-n/--names FIELD
+		Label attribute value definitions in the output OpenSCAD script using names
+		read from the named FIELD.
 	
 	Use these options to explicitly set fixed bounds for the extrusion. This is
 	useful to ensure that multiple models (representing a time series, for example)
 	are output at the same scale and are therefore comparable.
 	
 	-l/--lower VALUE
-		Set the lower bound of the extrusion - the "floor" height. VALUE must be
-		less than or equal to the minimum value of the attribute. The default
+		Set the lower bound of the extrusion - the "floor" height. The default
 		VALUE is the minimum value of the attribute.
 	
 	-u/--upper VALUE
-		Set the upper bound of the extrusion - the "ceiling" height. VALUE must be
-		greater than or equal to the maximum value of the attribute. The default
+		Set the upper bound of the extrusion - the "ceiling" height. The default
 		VALUE is the maximum value of the attribute.
 	
-	SCALING OPTIONS:
+	OUTPUT SIZE OPTIONS:
 	
-	-s/--scale FACTOR
-		Scaling FACTOR multiplied by attribute values to determine feature height
-		in output units. FACTOR must be greater than zero. Default FACTOR is 1.0.
+	Use these options to constrain the size of the output model. Size values
+	are in output units, typically interpreted to be millimeters.
 	
-	-h/--height VALUE
-		Explicitly set the height of the extrusion ceiling (see --upper) in output
-		units. VALUE must be greater than zero. Overrides and recalculates --scale.
+	-x VALUE
+		Features will be scaled to largest size that fits within VALUE output
+		units in the X dimension. Defaults to actual X extent of input features.
 	
-	-x/--xsize VALUE
-		Bounding box will be scaled to largest size that fits within VALUE output
-		units in the X dimension. If --ysize is also given, both constraints apply.
+	-y VALUE
+		Features will be scaled to largest size that fits within VALUE output
+		units in the Y dimension. Defaults to actual Y extent of input features.
 	
-	-y/--ysize VALUE
-		Bounding box will be scaled to largest size that fits within VALUE output
-		units in the Y dimension. If --xsize is also given, both constraints apply. 
+	-z VALUE
+		Extrusion will be scaled so the --upper value would not exceed VALUE
+		output units in the Z dimension. Defaults to smaller of X and Y limit. 
 	
 	MODEL OPTIONS:
 	
-	-b/--base THICKNESS
-		Set the THICKNESS in output units of the base layer. A base layer is always
-		present. THICKNESS must be greater than or equal to 0.1. Default is 1.0.
-	
-	-f/--floor
-		Expand the base layer to fill the rectangular bounding box of the features.
+	-f/--floor THICKNESS
+		Include a floor layer with THICKNESS in output units. The floor layer is
+		useful for connecting discontiguous features. The floor is automatically
+		enabled if --walls are enabled (wall thickness is used if floor not set).
 	
 	-w/--walls THICKNESS
-		Include walls on two sides of the model, with THICKNESS in output unit. 
+		Include walls on two sides of the model, with THICKNESS in output units. 
 		Wall THICKNESS must be greater than or equal to 0.1. Default is 1.0. The
 		walls are located adjacent to the -x and +y sides of the bounding box and
 		extend to the extrusion ceiling (see --upper).
