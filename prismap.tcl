@@ -15,10 +15,10 @@ header
 dataOptions
 "/* \[Data\] */
 
-// Must be less than or equal to the minimum data value.
+// Should be less than or equal to the minimum data value.
 lower_bound = %g;
 
-// Must be greater than or equal to the maximum data value.
+// Should be greater than or equal to the maximum data value.
 upper_bound = %g;
 %s"
 
@@ -37,32 +37,14 @@ y_size_limit = %g;
 z_size_limit = %g;
 
 // Must be less than z size limit. Set to 0 to disable floor. (Floor thickness is automatically set to wall thickness if floor is disabled and walls are enabled.)
-floor_thickness = %g; // [0:10]
+floor_thickness = %g; // \[0:10\]
 
 // Must be less than x and y size limits. Set to 0 to disable walls.
-wall_thickness = %g; // [0:10]
+wall_thickness = %g; // \[0:10\]
 "
 
 scriptSetup
 "/* \[Hidden\] */
-
-data = \[%s\];
-for (dv = data) {
-	if (lower_bound > dv) {
-		echo(\"Warning: lower bound should be less than or equal to minimum data value.\");
-	}
-	if (upper_bound < dv) {
-		echo(\"Warning: upper bound should be greater than or equal to maximum data value.\");
-	}
-}
-
-if (floor_thickness >= z_size_limit) {
-	echo(\"Warning: floor thickness should be less than z size limit.\");
-}
-
-if (wall_thickness >= x_size_limit || wall_thickness >= y_size_limit) {
-	echo(\"Warning: wall thickness should be less than x and y size limit.\");
-}
 
 x_extent = %g;
 
@@ -328,13 +310,12 @@ proc Process {} {
 	
 	# prepare default data definitions
 	for {set i 0} {$i < $shp(count)} {incr i} {
-		append dataDefinitions [format "\n%sdata%d = %g;\n" [FeatureLabel $i] $i [FeatureMeasure $i]]
-		lappend dataVars [format "data%d" $i]
+		append dataDefinitions [format "\n%sdata%d = %s;\n" [FeatureLabel $i] $i [FeatureMeasure $i]]
 	}
 	
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls)
-	Output $template(scriptSetup) [join $dataVars ", "] $shp(x_extent) $shp(y_extent)
+	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent)
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
 	

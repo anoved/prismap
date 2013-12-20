@@ -3,10 +3,10 @@
 
 /* [Data] */
 
-// Must be less than or equal to the minimum data value.
+// Should be less than or equal to the minimum data value.
 lower_bound = 0;
 
-// Must be greater than or equal to the maximum data value.
+// Should be greater than or equal to the maximum data value.
 upper_bound = 30;
 
 // Connecticut
@@ -56,24 +56,6 @@ floor_thickness = 1; // [0:10]
 wall_thickness = 1; // [0:10]
 
 /* [Hidden] */
-
-data = [data0, data1, data2, data3, data4, data5, data6, data7, data8];
-for (dv = data) {
-	if (lower_bound > dv) {
-		echo("Warning: lower bound should be less than or equal to minimum data value.");
-	}
-	if (upper_bound < dv) {
-		echo("Warning: upper bound should be greater than or equal to maximum data value.");
-	}
-}
-
-if (floor_thickness >= z_size_limit) {
-	echo("Warning: floor thickness should be less than z size limit.");
-}
-
-if (wall_thickness >= x_size_limit || wall_thickness >= y_size_limit) {
-	echo("Warning: wall thickness should be less than x and y size limit.");
-}
 
 x_extent = 13.5333;
 
