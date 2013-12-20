@@ -158,12 +158,11 @@ model_y_max = %f;
 model_z_max = %f;
 
 // Set to 0 to disable. Defaults to wall thickness if off and wall thickness is nonzero.
-floor_thickness = 1; // \[0:10\]
+floor_thickness = %f;
 
 // Set to 0 to disable.
-wall_thickness = 1; // \[0:10\]
-" $config(x_out) $config(y_out) $config(height)
-
+wall_thickness = %f;
+" $config(x) $config(y) $config(z) $config(floor) $config(walls)
 }
 
 proc OutputSettings {} {
@@ -301,20 +300,21 @@ module Prismap() {
 proc ConfigDefaults {} {
 	global config
 	array set config {
-		base    1.0
 		lower   {}
 		upper   {}
-		height  {}
-		scale   1.0
-		x_out   {}
-		y_out   {}
-		xyscale 1.0
+		
+		x   0.0
+		y   0.0
+		z   0.0
+		
+		floor   1.0
+		walls   1.0
+		
 		in      {}
 		attr    {}
 		default 0
 		out     {}
-		floor   0
-		walls   0.0
+		
 		verbose 0
 	}
 }
@@ -325,31 +325,24 @@ proc ConfigOptions {argl} {
 	for {set a 0} {$a < [llength $argl]} {incr a} {
 		set arg [lindex $argl $a]
 		switch -- $arg {
-			-b - --base {
-				if {[scan [lindex $argl [incr a]] %f config(base)] != 1} {
-					Abort {Base thickness must be numeric.}
-				}
-				# Arbitrary nonzero minimum base height ensures at least
-				# something is printed for features at lower bound of data...
-				# and avoids weird results with 0 linear_extrude height.
-				if {$config(base) < 0.1} {
-					Abort {Base thickness must be >= 0.1 (%2$s).} $config(base)
-				}
-			}
+			
 			-f - --floor {
-				set config(floor) 1
+				if {[scan [lindex $argl [incr a]] %f config(floor)] != 1} {
+					Abort {Floor thickness must be numeric.}
+				}
+				if {$config(floor) < 0} {
+					Abort {Floor thickness must be >= 0 (%1$s).} $config(floor)
+				}
 			}
 			-w - --walls {
 				if {[scan [lindex $argl [incr a]] %f config(walls)] != 1} {
 					Abort {Wall thickness must be numeric.}
 				}
-				# Minimum wall thickness set to match minimum base.
-				if {$config(walls) < 0.1} {
-					Abort {Wall thickness must be >= 0.1 (%2$s).} $config(walls)
+				if {$config(walls) < 0} {
+					Abort {Wall thickness must be >= 0 (%1$s).} $config(walls)
 				}
-				# walls require floor
-				set config(floor) 1
 			}
+			
 			-l - --lower {
 				if {[scan [lindex $argl [incr a]] %f config(lower)] != 1} {
 					Abort {Lower bound value must be numeric.}
@@ -360,39 +353,29 @@ proc ConfigOptions {argl} {
 					Abort {Upper bound value must be numeric.}
 				}
 			}
-			-h - --height {
-				# height overrides scale even if scale is also specified
-				if {[scan [lindex $argl [incr a]] %f config(height)] != 1} {
-					Abort {Height must be numeric.}
-				}
-				if {$config(height) <= 0} {
-					Abort {Height must be > 0 (%1$s).} $config(height)
-				}
-			}
-			-s - --scale {
-				if {[scan [lindex $argl [incr a]] %f config(scale)] != 1} {
-					Abort {Scale must be numeric.}
-				}
-				if {$config(scale) <= 0} {
-					Abort {Scale must be > 0 (%1$s).} $config(scale)
-				}
-			}
 			
-			-x - --xsize {
-				if {[scan [lindex $argl [incr a]] %f config(x_out)] != 1} {
+			-x {
+				if {[scan [lindex $argl [incr a]] %f config(x)] != 1} {
 					Abort {X size limit must be numeric.}
 				}
-				if {$config(x_out) <= 0} {
-					Abort {X size limit must be > 0 (%1$s).} $config(x_out)
+				if {$config(x) <= 0} {
+					Abort {X size limit must be > 0 (%1$s).} $config(x)
 				}
 			}
-			
-			-y - --ysize {
-				if {[scan [lindex $argl [incr a]] %f config(y_out)] != 1} {
+			-y {
+				if {[scan [lindex $argl [incr a]] %f config(y)] != 1} {
 					Abort {Y size limit must be numeric.}
 				}
-				if {$config(y_out) <= 0} {
-					Abort {Y size limit must be > 0 (%1$s).} $config(y_out)
+				if {$config(y) <= 0} {
+					Abort {Y size limit must be > 0 (%1$s).} $config(y)
+				}
+			}
+			-z {
+				if {[scan [lindex $argl [incr a]] %f config(z)] != 1} {
+					Abort {Z size limit must be numeric.}
+				}
+				if {$config(z) <= 0} {
+					Abort {Z size limit must be > 0 (%1$s).} $config(z)
 				}
 			}
 			
@@ -467,36 +450,18 @@ proc ConfigCheck {} {
 		Abort {Upper bound value (%1$s) must be >= maximum attribute value (%2$s).} $config(upper) $shp(max)
 	}
 	
-	# todo - remove explicit scale setting. Go with explicit xyz bounds only.
-	
-	# if height is set, it is used to compute the scale such that extruded height of a
-	# value at the upper bound of data would be exactly at the upper bound of extrusion 
-	if {$config(height) ne {}} {
-		set config(scale) [expr {($config(height) - $config(base)) / ($config(upper) - $config(lower))}]
-	} else {
-		#set config(height) [ExtrusionHeight $config(upper)]
+	if {$config(x) == 0} {
+		set config(x) $shp(x_size)
 	}
 	
-	# todo: x_out, y_out, and height must have reasonable defaults or be set explicitly
-	
-	
-	# by default, no xy scaling is applied
-	# xy scaling should only be applied to map features, not wall thickness.
-	# (As with base thickness, which should be exempt from height scaling)
-	
-	if {$config(x_out) ne {}} {
-		set config(xyscale) [expr {($config(x_out) - $config(walls)) / $shp(x_size)}]
+	if {$config(y) == 0} {
+		set config(y) $shp(y_size)
 	}
 	
-	if {$config(y_out) ne {}} {
-		set y_scale [expr {($config(y_out) - $config(walls)) / $shp(y_size)}]
-		if {$config(x_out) ne {} && $y_scale < $config(xyscale)} {
-			set config(xyscale) $y_scale
-		} else {
-			set config(xyscale) $y_scale
-		}
-		# but not if $config(x_out) ne {} && $y_scale >= $xy_scale
-		# ie, leave xy_scale alone if already large enough to fit.
+	if {$config(z) == 0} {
+		# default z height not based on attribute values, but
+		# proportioned to x/y dimensions. Best to set explicitly.
+		set config(z) [expr {min($config(x), $config(y))}]
 	}
 }
 
@@ -570,33 +535,27 @@ are output at the same scale and are therefore comparable.
 
 SCALING OPTIONS:
 
--s/--scale FACTOR
-	Scaling FACTOR multiplied by attribute values to determine feature height
-	in output units. FACTOR must be greater than zero. Default FACTOR is 1.0.
-
--h/--height VALUE
+-z VALUE
 	Explicitly set the height of the extrusion ceiling (see --upper) in output
-	units. VALUE must be greater than zero. Overrides and recalculates --scale.
+	units. VALUE must be greater than zero.
 
--x/--xsize VALUE
+-x VALUE
 	Bounding box will be scaled to largest size that fits within VALUE output
-	units in the X dimension. If --ysize is also given, both constraints apply.
+	units in the X dimension. If -y is also given, both constraints apply.
 
--y/--ysize VALUE
+-y VALUE
 	Bounding box will be scaled to largest size that fits within VALUE output
-	units in the Y dimension. If --xsize is also given, both constraints apply. 
+	units in the Y dimension. If -x is also given, both constraints apply. 
 
 MODEL OPTIONS:
 
--b/--base THICKNESS
-	Set the THICKNESS in output units of the base layer. A base layer is always
-	present. THICKNESS must be greater than or equal to 0.1. Default is 1.0.
-
--f/--floor
-	Expand the base layer to fill the rectangular bounding box of the features.
+-f/--floor THICKNESS
+	Include a floor layer with THICKNESS in output units. The floor layer is
+	useful for connecting discontiguous features. The floor is automatically
+	enabled if --walls are enabled (wall thickness is used if floor not set).
 
 -w/--walls THICKNESS
-	Include walls on two sides of the model, with THICKNESS in output unit. 
+	Include walls on two sides of the model, with THICKNESS in output units. 
 	Wall THICKNESS must be greater than or equal to 0.1. Default is 1.0. The
 	walls are located adjacent to the -x and +y sides of the bounding box and
 	extend to the extrusion ceiling (see --upper).
