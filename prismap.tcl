@@ -521,16 +521,13 @@ proc PrintUsage {} {
 
 Prismap generates an OpenSCAD script representing the polygon features of the
 input shapefile extruded proportional to the values of a named attribute field.
-The intent is to produce tangible 3D printable models of the conceptual data
-model beneath choropleth thematic map design - the "prism map".
+The OpenSCAD output is compatible with Makerbot Thingiverse Customizer.
 
 Preprocessing is advisable to prepare shapefiles for conversion with Prismap.
-For printing purposes, all features should comprise a contiguous region. Small
-holes or islands should be pruned and complex boundaries shoulds be simplified.
-
-Feature coordinates are retained without modification. If your shapefile's
-coordinate system is not suited for Cartesian display, consider working with a
-reprojected version instead. (You can rescale OpenSCAD output before printing.)
+Small holes or islands should be pruned and complex boundaries shoulds be
+simplified. Feature coordinates are retained without modification. If your
+shapefile's coordinate system is not suited for Cartesian display, consider
+working with a reprojected version instead.
 
 REQUIRED OPTIONS:
 
