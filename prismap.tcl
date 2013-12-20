@@ -5,6 +5,100 @@ package require msgcat
 
 ::msgcat::mcload [file join [file dirname [info script]] {msgs}]
 
+array set template {
+
+dataOptions
+"/* \[Data\] */
+
+// Must be less than or equal to the minimum data value.
+lower_bound = %f;
+
+// Must be greater than or equal to the maximum data value.
+upper_bound = %f;
+%s"
+
+modelOptions
+"// preview\[view:south, tilt:top diagonal\]
+
+/* \[Model Options\] */
+
+model_x_max = %f;
+
+model_y_max = %f;
+
+model_z_max = %f;
+
+// Set to 0 to disable. Defaults to wall thickness if off and wall thickness is nonzero.
+floor_thickness = %f;
+
+// Set to 0 to disable.
+wall_thickness = %f;
+"
+
+functions
+"/* \[Hidden\] */
+
+x_size = %f;
+
+y_size = %f;
+
+z_scale = (model_z_max - floor_thickness) / (upper_bound - lower_bound);
+
+x_scale = (model_x_max - wall_thickness) / x_size;
+
+y_scale = (model_y_max - wall_thickness) / y_size;
+
+xy_scale = min(x_scale, y_scale);
+
+function extrusionheight(value) = floor_thickness + (z_scale * (value - lower_bound));
+
+Prismap();
+"
+
+wallsModule
+"module Walls() {
+	translate(\[((x_size / -2) * xy_scale) - wall_thickness, (y_size / -2) * xy_scale, 0\])
+		cube(\[wall_thickness, (y_size * xy_scale) + wall_thickness, model_z_max\]);
+	translate(\[(x_size / -2) * xy_scale, (y_size / 2) * xy_scale, 0\])
+		cube(\[x_size * xy_scale, wall_thickness, model_z_max\]);
+}
+"
+
+floorModule
+"module Floor() {
+	translate(\[%f, %f, 0\])
+		cube(\[x_size, y_size, floor_thickness > 0 ? floor_thickness : wall_thickness\]);
+}
+"
+
+featureModule
+"module feature%d(height) {
+	if (height > 0) {
+		linear_extrude(height=height) polygon(points=\[
+%s
+		\], paths=\[
+%s
+		\]);
+	}
+}
+"
+
+prismapModule
+"module Prismap() {
+	union() {
+		if (wall_thickness > 0) {
+			Walls();
+		}
+		scale(\[xy_scale, xy_scale, 1\]) translate(\[%f, %f, 0\]) {
+			if (floor_thickness > 0 || wall_thickness > 0) {
+				Floor();
+			}
+%s		}
+	}
+}"
+
+}
+
 proc Prismap {} {
 	global config
 	
@@ -148,56 +242,8 @@ proc FeatureLabel {id} {
 		return {}
 	}
 	
-	return [format "// %s" [$shp(file) attributes read $id $shp(names)]]
+	return [format "// %s\n" [$shp(file) attributes read $id $shp(names)]]
 
-}
-
-proc OutputSettings_Features {} {
-	global config
-	global shp
-	
-	Output "
-/* \[Data\] */
-
-// Must be less than or equal to the minimum data value.
-lower_bound = %f;
-
-// Must be greater than or equal to the maximum data value.
-upper_bound = %f;
-" $config(lower) $config(upper)
-
-	# output default data values
-	for {set i 0} {$i < $shp(count)} {incr i} {
-		Output [FeatureLabel $i]
-		set measure [FeatureMeasure $i]
-		Output [format "data%d = %f;\n" $i $measure]
-	}
-}
-
-proc OutputSettings_Model {} {
-	global config
-	Output "
-// preview\[view:south, tilt:top diagonal\]
-
-/* \[Model Options\] */
-
-model_x_max = %f;
-
-model_y_max = %f;
-
-model_z_max = %f;
-
-// Set to 0 to disable. Defaults to wall thickness if off and wall thickness is nonzero.
-floor_thickness = %f;
-
-// Set to 0 to disable.
-wall_thickness = %f;
-" $config(x) $config(y) $config(z) $config(floor) $config(walls)
-}
-
-proc OutputSettings {} {
-	OutputSettings_Features
-	OutputSettings_Model
 }
 
 proc ReformatCoords {coords} {
@@ -230,26 +276,6 @@ proc ReformatCoords {coords} {
 	return [list [join $points ",\n"] [join $paths ",\n"]]
 }
 
-proc OutputFloorModule {} {
-	global shp
-	Output "module Floor() {
-	translate(\[%f, %f, 0\])
-		cube(\[%f, %f, floor_thickness > 0 ? floor_thickness : wall_thickness\]);
-}
-" $shp(xmin) $shp(ymin) $shp(x_size) $shp(y_size)
-}
-
-proc OutputWallsModule {} {
-	global shp
-	Output "module Walls() {
-	translate(\[((%f / -2) * xy_scale) - wall_thickness, (%f / -2) * xy_scale, 0\])
-		cube(\[wall_thickness, (%f * xy_scale) + wall_thickness, model_z_max\]);
-	translate(\[(%f / -2) * xy_scale, (%f / 2) * xy_scale, 0\])
-		cube(\[%f * xy_scale, wall_thickness, model_z_max\]);
-}
-" $shp(x_size) $shp(y_size) $shp(y_size) $shp(x_size) $shp(y_size) $shp(x_size)
-}
-
 # default feature now considered to be 0?
 # don't want to omit features altogether since, since customizers may set values
 proc FeatureMeasure {id} {
@@ -269,66 +295,29 @@ proc FeatureMeasure {id} {
 	}
 }
 
-proc OutputFeatureModule {id} {
-	global shp
-	lassign [ReformatCoords [$shp(file) coordinates read $id]] points paths
-	Output "module feature%d(height) {
-	if (height > 0) {
-		linear_extrude(height=height) polygon(points=\[
-%s
-		\], paths=\[
-%s
-		\]);
-	}
-}
-" $id $points $paths
-}
-
-
 # outputs featureN() modules and main Prismap() module.
 proc Process {} {
+	global template
+	global config
 	global shp
 	
-	OutputSettings
-	
-	Output "z_scale = (model_z_max - floor_thickness) / (upper_bound - lower_bound);
-
-x_scale = (model_x_max - wall_thickness) / %f;
-
-y_scale = (model_y_max - wall_thickness) / %f;
-
-xy_scale = min(x_scale, y_scale);
-
-function extrusionheight(value) = floor_thickness + (z_scale * (value - lower_bound));
-
-Prismap();
-" \
-$shp(x_size) $shp(y_size)
-	
-	OutputFloorModule
-	OutputWallsModule
-	
-	set featureModules {}
 	for {set i 0} {$i < $shp(count)} {incr i} {
-		
-		
-		OutputFeatureModule $i
-		append featureModules [format "\t\t\tfeature%d(extrusionheight(data%d));\n" $i $i]
+		append dataDefinitions [format "\n%sdata%d = %f;\n" [FeatureLabel $i] $i [FeatureMeasure $i]]
 	}
 	
-	Output "
-module Prismap() {
-	union() {
-		if (wall_thickness > 0) {
-			Walls();
-		}
-		scale(\[xy_scale, xy_scale, 1\]) translate(\[%f, %f, 0\]) {
-			if (floor_thickness > 0 || wall_thickness > 0) {
-				Floor();
-			}
-%s		}
+	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
+	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls)
+	Output $template(functions) $shp(x_size) $shp(y_size)
+	Output $template(floorModule) $shp(xmin) $shp(ymin)
+	Output $template(wallsModule)
+	
+	for {set i 0} {$i < $shp(count)} {incr i} {
+		lassign [ReformatCoords [$shp(file) coordinates read $i]] points paths
+		Output $template(featureModule) $i $points $paths
+		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d));\n" $i $i]
 	}
-}" $shp(x_offset) $shp(y_offset) $featureModules
+	
+	Output $template(prismapModule) $shp(x_offset) $shp(y_offset) $featureCommands
 }
 
 proc ConfigDefaults {} {
