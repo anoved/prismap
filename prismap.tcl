@@ -7,6 +7,11 @@ package require msgcat
 
 array set template {
 
+header
+"// Generated with Prismap, written by Jim DeVona
+// https://github.com/anoved/prismap
+"
+
 dataOptions
 "/* \[Data\] */
 
@@ -318,6 +323,8 @@ proc Process {} {
 	global template
 	global config
 	global shp
+	
+	Output $template(header)
 	
 	# prepare default data definitions
 	for {set i 0} {$i < $shp(count)} {incr i} {

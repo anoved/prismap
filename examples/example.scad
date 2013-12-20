@@ -1,3 +1,6 @@
+// Generated with Prismap, written by Jim DeVona
+// https://github.com/anoved/prismap
+
 /* [Data] */
 
 // Must be less than or equal to the minimum data value.
