@@ -253,15 +253,32 @@ proc Output {msg args} {
 	puts $out [format $msg {*}$args]
 }
 
+# Returns empty string if there is no label for feature id,
+# otherwise returns comment line containing feature name
 proc FeatureLabel {id} {
 	global shp
-	
 	if {$shp(names) == {}} {
 		return {}
 	}
-	
 	return [format "// %s\n" [$shp(file) attributes read $id $shp(names)]]
+}
 
+# Returns default attribute measure if no attribute field defined
+# or if the attribute measure for feature id is null, otherwise
+# returns attribute measure for feature id.
+proc FeatureMeasure {id} {
+	global config
+	global shp
+	if {$config(attr) == {}} {
+		return $config(default)
+	} else {
+		set value [$shp(file) attributes read $id $shp(attr)]
+		if {$value == {}} {
+			return $config(default)
+		} else {
+			return $value
+		}
+	}
 }
 
 proc ReformatCoords {coords} {
@@ -292,25 +309,6 @@ proc ReformatCoords {coords} {
 	
 	# return tuple of OpenSCAD polygon() points= and paths= values.
 	return [list [join $points ",\n"] [join $paths ",\n"]]
-}
-
-# default feature now considered to be 0?
-# don't want to omit features altogether since, since customizers may set values
-proc FeatureMeasure {id} {
-	global config
-	global shp
-	if {$config(attr) == {}} {
-		# if attribute field is not specified, default value must be
-		return $config(default)
-	} else {
-		set value [$shp(file) attributes read $id $shp(attr)]
-		if {$value == {}} {
-			# default may be {} as well, but at least we tried.
-			return $config(default)
-		} else {
-			return $value
-		}
-	}
 }
 
 # outputs featureN() modules and main Prismap() module.
