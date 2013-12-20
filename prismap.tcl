@@ -539,68 +539,76 @@ REQUIRED OPTIONS:
     (.shp, .shx, or .dbf) or the base name (minus suffix), but all three parts
     must be present. Only xy polygon shapefiles are supported.
 
--a/--attribute NAME
--d/--default VALUE
-    Extrude shapefile features according to the value of the attribute field
-    NAME or, if NAME is not specified, the constant default VALUE. At least one
-    of these options must be specified. If both are specified, the default
-    value will be used only where there attribute field value is null.
-    The attribute field type must be numeric (integer or double).
-
 -o/--out PATH
-	Write OpenSCAD script to file at PATH. If PATH is a single hyphen character
-	("-"), the script is written to standard output.
+    Write OpenSCAD script to file at PATH. If PATH is a single hyphen character
+    ("-"), the script is written to standard output.
 
-DATA RANGE OPTIONS:
+ATTRIBUTE OPTIONS:
+
+Features are extruded according to their attribute value.
+
+-d/--default VALUE
+    Set the default attribute value. Default values are used if no --attribute
+    field is specified or in place of any null attribute values encountered.
+    The default VALUE is 0.
+
+-a/--attribute FIELD
+    Read attribute values from the named FIELD. The attribute field type must
+    be numeric (integer or double).
+
+-n/--names FIELD
+    Label attribute value definitions in the output OpenSCAD script using names
+    read from the named FIELD.
 
 Use these options to explicitly set fixed bounds for the extrusion. This is
 useful to ensure that multiple models (representing a time series, for example)
 are output at the same scale and are therefore comparable.
 
 -l/--lower VALUE
-	Set the lower bound of the extrusion - the "floor" height. VALUE must be
-	less than or equal to the minimum value of the attribute. The default
-	VALUE is the minimum value of the attribute.
+    Set the lower bound of the extrusion - the "floor" height. The default
+    VALUE is the minimum value of the attribute.
 
 -u/--upper VALUE
-	Set the upper bound of the extrusion - the "ceiling" height. VALUE must be
-	greater than or equal to the maximum value of the attribute. The default
-	VALUE is the maximum value of the attribute.
+    Set the upper bound of the extrusion - the "ceiling" height. The default
+    VALUE is the maximum value of the attribute.
 
-SCALING OPTIONS:
+OUTPUT SIZE OPTIONS:
 
--z VALUE
-	Explicitly set the height of the extrusion ceiling (see --upper) in output
-	units. VALUE must be greater than zero.
+Use these options to constrain the size of the output model. Size values
+are in output units, typically interpreted to be millimeters.
 
 -x VALUE
-	Bounding box will be scaled to largest size that fits within VALUE output
-	units in the X dimension. If -y is also given, both constraints apply.
+    Features will be scaled to largest size that fits within VALUE output
+    units in the X dimension. Defaults to actual X extent of input features.
 
 -y VALUE
-	Bounding box will be scaled to largest size that fits within VALUE output
-	units in the Y dimension. If -x is also given, both constraints apply. 
+    Features will be scaled to largest size that fits within VALUE output
+    units in the Y dimension. Defaults to actual Y extent of input features.
+
+-z VALUE
+	Extrusion will be scaled so the --upper value would not exceed VALUE
+	output units in the Z dimension. Defaults to smaller of X and Y limit. 
 
 MODEL OPTIONS:
 
 -f/--floor THICKNESS
-	Include a floor layer with THICKNESS in output units. The floor layer is
-	useful for connecting discontiguous features. The floor is automatically
-	enabled if --walls are enabled (wall thickness is used if floor not set).
+    Include a floor layer with THICKNESS in output units. The floor layer is
+    useful for connecting discontiguous features. The floor is automatically
+    enabled if --walls are enabled (wall thickness is used if floor not set).
 
 -w/--walls THICKNESS
-	Include walls on two sides of the model, with THICKNESS in output units. 
-	Wall THICKNESS must be greater than or equal to 0.1. Default is 1.0. The
-	walls are located adjacent to the -x and +y sides of the bounding box and
-	extend to the extrusion ceiling (see --upper).
+    Include walls on two sides of the model, with THICKNESS in output units. 
+    Wall THICKNESS must be greater than or equal to 0.1. Default is 1.0. The
+    walls are located adjacent to the -x and +y sides of the bounding box and
+    extend to the extrusion ceiling (see --upper).
 
 MISCELLANEOUS OPTIONS:
 
 --debug
-	Print configuration values and shapefile info to standard error.
+    Print configuration values and shapefile info to standard error.
 
 --help
-	Display this usage message.
+    Display this usage message.
 } [file tail [info script]]]
 }
 
