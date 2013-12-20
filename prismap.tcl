@@ -67,7 +67,7 @@ proc OpenShapefile {} {
 		# assert that the selected attribute field is numeric 
 		set attr_type [lindex [$shp(file) fields list $shp(attr)] 0]
 		if {$attr_type ne "integer" && $attr_type ne "double"} {
-			Abort {Attribute field type is not numeric (type of "%1$s" is %2$s).} $attr_name $attr_type
+			Abort {Attribute field type is not numeric (type of "%1$s" is %2$s).} $config(attr) $attr_type
 		}
 		
 		# min, max - attribute bounds
@@ -80,6 +80,24 @@ proc OpenShapefile {} {
 			if {$value > $shp(max)} {
 				set shp(max) $value
 			}
+		}
+	}
+	
+	if {$config(names) == {}} {
+		
+		set shp(names) {}
+		
+	} else {
+		
+		# names - index of name labels field
+		if {[catch {$shp(file) fields index $config(names)} shp(names)]} {
+			Abort $shp(names)
+		}
+		
+		# assert that the name field is string
+		set name_type [lindex [$shp(file) fields list $shp(names)] 0]
+		if {$name_type ne "string"} {
+			Abort {Name label field type is not string (type of "%1$s" is %2$s).} $config(names) $name_type
 		}
 	}
 	
@@ -123,6 +141,17 @@ proc Output {msg args} {
 	puts $out [format $msg {*}$args]
 }
 
+proc FeatureLabel {id} {
+	global shp
+	
+	if {$shp(names) == {}} {
+		return {}
+	}
+	
+	return [format "// %s" [$shp(file) attributes read $id $shp(names)]]
+
+}
+
 proc OutputSettings_Features {} {
 	global config
 	global shp
@@ -134,13 +163,14 @@ proc OutputSettings_Features {} {
 lower_bound = %f;
 
 // Must be greater than or equal to the maximum data value.
-upper_bound = %f;" $config(lower) $config(upper)
+upper_bound = %f;
+" $config(lower) $config(upper)
 
 	# output default data values
 	for {set i 0} {$i < $shp(count)} {incr i} {
-		#set label [format "// %s" getlabelattribute]
+		Output [FeatureLabel $i]
 		set measure [FeatureMeasure $i]
-		Output [format "\ndata%d = %f;\n" $i $measure]
+		Output [format "data%d = %f;\n" $i $measure]
 	}
 }
 
@@ -313,6 +343,7 @@ proc ConfigDefaults {} {
 		in      {}
 		attr    {}
 		default 0
+		names   {}
 		out     {}
 		
 		verbose 0
@@ -385,10 +416,10 @@ proc ConfigOptions {argl} {
 				}
 				set config(in) [lindex $argl [incr a]]
 			}
+			-n - --names {
+				set config(names) [lindex $argl [incr a]]
+			}
 			-a - --attribute {
-				if {$config(attr) ne {}} {
-					Abort {Attribute name set multiple times.}
-				}
 				set config(attr) [lindex $argl [incr a]]
 			}
 			-d - --default {
