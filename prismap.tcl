@@ -28,15 +28,23 @@ model_y_max = %f;
 
 model_z_max = %f;
 
-// Set to 0 to disable. Defaults to wall thickness if off and wall thickness is nonzero.
+// Must be less than model Z max. Set to 0 to disable floor. (Floor thickness is automatically set to wall thickness if floor is disabled and walls are enabled.)
 floor_thickness = %f;
 
-// Set to 0 to disable.
+// Must be less than model X and Y max. Set to 0 to disable walls.
 wall_thickness = %f;
 "
 
 functions
 "/* \[Hidden\] */
+
+if (floor_thickness >= model_z_max) {
+	echo(\"Warning: floor thickness should be less than model Z max.\");
+}
+
+if (wall_thickness >= model_x_max || wall_thickness >= model_y_max) {
+	echo(\"Warning: wall thickness should be less than model X and Y max.\");
+}
 
 x_size = %f;
 
