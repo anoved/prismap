@@ -311,12 +311,12 @@ proc ReformatCoords {coords} {
 	return [list [join $points ",\n"] [join $paths ",\n"]]
 }
 
-# outputs featureN() modules and main Prismap() module.
 proc Process {} {
 	global template
 	global config
 	global shp
 	
+	# prepare default data definitions
 	for {set i 0} {$i < $shp(count)} {incr i} {
 		append dataDefinitions [format "\n%sdata%d = %f;\n" [FeatureLabel $i] $i [FeatureMeasure $i]]
 		lappend dataVars [format "data%d" $i]
@@ -328,6 +328,7 @@ proc Process {} {
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
 	
+	# output feature modules - coordinate lists
 	for {set i 0} {$i < $shp(count)} {incr i} {
 		lassign [ReformatCoords [$shp(file) coordinates read $i]] points paths
 		Output $template(featureModule) $i $points $paths
@@ -343,9 +344,9 @@ proc ConfigDefaults {} {
 		lower   {}
 		upper   {}
 		
-		x   0.0
-		y   0.0
-		z   0.0
+		x       0.0
+		y       0.0
+		z       0.0
 		
 		floor   1.0
 		walls   1.0
@@ -460,11 +461,6 @@ proc ConfigOptions {argl} {
 	if {$config(in) == {}} {
 		Abort {Shapefile path must be specified with --in.}
 	}
-	
-	# if we set default default to 0, don't need to require attribute anymore... (todo)
-	if {$config(attr) == {} && $config(default) == {}} {
-		Abort {Attribute field name or default value must be specified with --attribute or --default, respectively.}
-	}
 	if {$config(out) == {}} {
 		Abort {Output path must be specified with --output.}
 	}
@@ -478,17 +474,11 @@ proc ConfigCheck {} {
 	if {$config(lower) == {}} {
 		# default lower bound of extrusion is lower bound of data
 		set config(lower) $shp(min)
-	} elseif {$config(lower) > $shp(min)} {
-		# if lower bound of extrusion is explicitly set, it must not be greater that lower bound of data
-		Abort {Lower bound value (%1$s) must be <= minimum attribute value (%2$s).} $config(lower) $shp(min)
 	}
 	
 	if {$config(upper) == {}} {
 		# default upper bound of extrusion is upper bound of data
 		set config(upper) $shp(max)
-	} elseif {$config(upper) < $shp(max)} {
-		# if upper bound of extrusion is explicitly set, it must not be lower than upper bound of data
-		Abort {Upper bound value (%1$s) must be >= maximum attribute value (%2$s).} $config(upper) $shp(max)
 	}
 	
 	if {$config(x) == 0} {
