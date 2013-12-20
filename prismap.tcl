@@ -22,16 +22,19 @@ modelOptions
 
 /* \[Model Options\] */
 
-model_x_max = %f;
+// Maximum x size in output units (typically mm).
+x_size_limit = %f;
 
-model_y_max = %f;
+// Maximum y size in output units (typically mm).
+y_size_limit = %f;
 
-model_z_max = %f;
+// Maximum z size in output units (typically mm).
+z_size_limit = %f;
 
-// Must be less than model Z max. Set to 0 to disable floor. (Floor thickness is automatically set to wall thickness if floor is disabled and walls are enabled.)
+// Must be less than z size limit. Set to 0 to disable floor. (Floor thickness is automatically set to wall thickness if floor is disabled and walls are enabled.)
 floor_thickness = %f; // [0:10]
 
-// Must be less than model X and Y max. Set to 0 to disable walls.
+// Must be less than x and y size limits. Set to 0 to disable walls.
 wall_thickness = %f; // [0:10]
 "
 
@@ -48,23 +51,23 @@ for (dv = data) {
 	}
 }
 
-if (floor_thickness >= model_z_max) {
-	echo(\"Warning: floor thickness should be less than model Z max.\");
+if (floor_thickness >= z_size_limit) {
+	echo(\"Warning: floor thickness should be less than z size limit.\");
 }
 
-if (wall_thickness >= model_x_max || wall_thickness >= model_y_max) {
-	echo(\"Warning: wall thickness should be less than model X and Y max.\");
+if (wall_thickness >= x_size_limit || wall_thickness >= y_size_limit) {
+	echo(\"Warning: wall thickness should be less than x and y size limit.\");
 }
 
-x_size = %f;
+x_extent = %f;
 
-y_size = %f;
+y_extent = %f;
 
-z_scale = (model_z_max - floor_thickness) / (upper_bound - lower_bound);
+z_scale = (z_size_limit - floor_thickness) / (upper_bound - lower_bound);
 
-x_scale = (model_x_max - wall_thickness) / x_size;
+x_scale = (x_size_limit - wall_thickness) / x_extent;
 
-y_scale = (model_y_max - wall_thickness) / y_size;
+y_scale = (y_size_limit - wall_thickness) / y_extent;
 
 xy_scale = min(x_scale, y_scale);
 
@@ -75,17 +78,17 @@ Prismap();
 
 wallsModule
 "module Walls() {
-	translate(\[((x_size / -2) * xy_scale) - wall_thickness, (y_size / -2) * xy_scale, 0\])
-		cube(\[wall_thickness, (y_size * xy_scale) + wall_thickness, model_z_max\]);
-	translate(\[(x_size / -2) * xy_scale, (y_size / 2) * xy_scale, 0\])
-		cube(\[x_size * xy_scale, wall_thickness, model_z_max\]);
+	translate(\[((x_extent / -2) * xy_scale) - wall_thickness, (y_extent / -2) * xy_scale, 0\])
+		cube(\[wall_thickness, (y_extent * xy_scale) + wall_thickness, z_size_limit\]);
+	translate(\[(x_extent / -2) * xy_scale, (y_extent / 2) * xy_scale, 0\])
+		cube(\[x_extent * xy_scale, wall_thickness, z_size_limit\]);
 }
 "
 
 floorModule
 "module Floor() {
 	translate(\[%f, %f, 0\])
-		cube(\[x_size, y_size, floor_thickness > 0 ? floor_thickness : wall_thickness\]);
+		cube(\[x_extent, y_extent, floor_thickness > 0 ? floor_thickness : wall_thickness\]);
 }
 "
 
@@ -220,9 +223,9 @@ proc OpenShapefile {} {
 	set shp(x_offset) [expr {($shp(xmax) + $shp(xmin)) / -2.0}]
 	set shp(y_offset) [expr {($shp(ymax) + $shp(ymin)) / -2.0}]
 	
-	# x_size, y_size - bounding box dimensions
-	set shp(x_size) [expr {$shp(xmax) - $shp(xmin)}]
-	set shp(y_size) [expr {$shp(ymax) - $shp(ymin)}]
+	# x_extent, y_extent - bounding box dimensions
+	set shp(x_extent) [expr {$shp(xmax) - $shp(xmin)}]
+	set shp(y_extent) [expr {$shp(ymax) - $shp(ymin)}]
 	
 }
 
@@ -324,7 +327,7 @@ proc Process {} {
 	
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls)
-	Output $template(scriptSetup) [join $dataVars ", "] $shp(x_size) $shp(y_size)
+	Output $template(scriptSetup) [join $dataVars ", "] $shp(x_extent) $shp(y_extent)
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
 	
@@ -482,11 +485,11 @@ proc ConfigCheck {} {
 	}
 	
 	if {$config(x) == 0} {
-		set config(x) $shp(x_size)
+		set config(x) $shp(x_extent)
 	}
 	
 	if {$config(y) == 0} {
-		set config(y) $shp(y_size)
+		set config(y) $shp(y_extent)
 	}
 	
 	if {$config(z) == 0} {
