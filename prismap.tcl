@@ -29,10 +29,10 @@ model_y_max = %f;
 model_z_max = %f;
 
 // Must be less than model Z max. Set to 0 to disable floor. (Floor thickness is automatically set to wall thickness if floor is disabled and walls are enabled.)
-floor_thickness = %f;
+floor_thickness = %f; // [0:10]
 
 // Must be less than model X and Y max. Set to 0 to disable walls.
-wall_thickness = %f;
+wall_thickness = %f; // [0:10]
 "
 
 functions
