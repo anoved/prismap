@@ -215,7 +215,7 @@ proc ReformatCoords {coords} {
 		foreach {x y} [lrange $part 0 end-2] {
 			
 			# vertices of all parts in the feature are accumulated in a single list...
-			lappend points [format {[%s, %s]} $x $y]
+			lappend points [format "\t\t\t\[%s, %s\]" $x $y]
 			
 			# ... but the indices of the vertices that make up each part are grouped...
 			lappend part_path $index
@@ -223,7 +223,7 @@ proc ReformatCoords {coords} {
 		}
 		
 		# ... and each part's path is appended to the feature's path list when complete.
-		lappend paths [format {[%s]} [join $part_path ","]]
+		lappend paths [format "\t\t\t\[%s\]" [join $part_path ","]]
 	}
 	
 	# return tuple of OpenSCAD polygon() points= and paths= values.
@@ -235,17 +235,19 @@ proc OutputFloorModule {} {
 	Output "module Floor() {
 	translate(\[%f, %f, 0\])
 		cube(\[%f, %f, floor_thickness > 0 ? floor_thickness : wall_thickness\]);
-}" $shp(xmin) $shp(ymin) $shp(x_size) $shp(y_size)
+}
+" $shp(xmin) $shp(ymin) $shp(x_size) $shp(y_size)
 }
 
 proc OutputWallsModule {} {
 	global shp
 	Output "module Walls() {
 	translate(\[((%f / -2) * xy_scale) - wall_thickness, (%f / -2) * xy_scale, 0\])
-	cube(\[wall_thickness, (%f * xy_scale) + wall_thickness, model_z_max\]);
+		cube(\[wall_thickness, (%f * xy_scale) + wall_thickness, model_z_max\]);
 	translate(\[(%f / -2) * xy_scale, (%f / 2) * xy_scale, 0\])
-	cube(\[%f * xy_scale, wall_thickness, model_z_max\]);}" \
-	$shp(x_size) $shp(y_size) $shp(y_size) $shp(x_size) $shp(y_size) $shp(x_size)
+		cube(\[%f * xy_scale, wall_thickness, model_z_max\]);
+}
+" $shp(x_size) $shp(y_size) $shp(y_size) $shp(x_size) $shp(y_size) $shp(x_size)
 }
 
 # default feature now considered to be 0?
@@ -272,13 +274,14 @@ proc OutputFeatureModule {id} {
 	lassign [ReformatCoords [$shp(file) coordinates read $id]] points paths
 	Output "module feature%d(height) {
 	if (height > 0) {
-	linear_extrude(height=height)
-	polygon(points=\[
-	%s
-	\], paths=\[
-	%s
-	\]);
-	}}" $id $points $paths
+		linear_extrude(height=height) polygon(points=\[
+%s
+		\], paths=\[
+%s
+		\]);
+	}
+}
+" $id $points $paths
 }
 
 
@@ -289,10 +292,15 @@ proc Process {} {
 	OutputSettings
 	
 	Output "z_scale = (model_z_max - floor_thickness) / (upper_bound - lower_bound);
+
 x_scale = (model_x_max - wall_thickness) / %f;
+
 y_scale = (model_y_max - wall_thickness) / %f;
+
 xy_scale = min(x_scale, y_scale);
+
 function extrusionheight(value) = floor_thickness + (z_scale * (value - lower_bound));
+
 Prismap();
 " \
 $shp(x_size) $shp(y_size)
@@ -305,7 +313,7 @@ $shp(x_size) $shp(y_size)
 		
 		
 		OutputFeatureModule $i
-		append featureModules [format "\t\t\t\tfeature%d(extrusionheight(data%d));\n" $i $i]
+		append featureModules [format "\t\t\tfeature%d(extrusionheight(data%d));\n" $i $i]
 	}
 	
 	Output "
@@ -314,15 +322,11 @@ module Prismap() {
 		if (wall_thickness > 0) {
 			Walls();
 		}
-		scale(\[xy_scale, xy_scale, 1\]) {
-			translate(\[%f, %f, 0\]) {
-				if (floor_thickness > 0 || wall_thickness > 0) {
-					Floor();
-				}
-				
-%s
+		scale(\[xy_scale, xy_scale, 1\]) translate(\[%f, %f, 0\]) {
+			if (floor_thickness > 0 || wall_thickness > 0) {
+				Floor();
 			}
-		}
+%s		}
 	}
 }" $shp(x_offset) $shp(y_offset) $featureModules
 }
