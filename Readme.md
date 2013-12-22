@@ -113,6 +113,22 @@ Here is the output of `prismap --help`:
 	--help
 		Display this usage message.
 
+## Converting Prismap's Output to Printable STL
+
+Prismap outputs an [OpenSCAD](http://www.openscad.org/) script. To convert it to a printable STL model, choose *"Compile and Render"* followed by *"Export as STL"* from OpenSCAD's *"Design"* menu.
+
+![OpenSCAD STL export screenshot](examples/openscad-stl-export.png)
+
+Alternatively, you can convert the model on the command line. Use OpenSCAD's `-o` option to specify the output STL file:
+
+	openscad -o example.stl example.scad
+
+Last but not least, you can upload the OpenSCAD model to [Thingiverse](http://www.thingiverse.com/thing:205980). If you tag the model with `customizer`, Thingiverse will allow you (and others) to customize the model online. Clicking *"Create Thing"* will save a printable STL version of customized model to your Thingiverse account.
+
+![Thingiverse Customizer screenshot](examples/thingiverse-customizer.png)
+
+Use Prismap to generate printable map templates, then share them on Thingiverse in this way to let other people easily remix them with their own data.
+
 ## Prerequisites
 
 - [Shapetcl](https://github.com/anoved/Shapetcl/) (build `shapetcl.so` and install in your Tcl `auto_path` with `make && make install`)
