@@ -314,7 +314,12 @@ proc Process {} {
 	
 	# prepare default data definitions
 	for {set i 0} {$i < $shp(count)} {incr i} {
-		append dataDefinitions [format "\n%sdata%d = %s;\n" [FeatureLabel $i] $i [FeatureMeasure $i]]
+		lappend dataLabels [FeatureLabel $i]
+	}
+	
+	# sort by label
+	foreach i [lsort -indices $dataLabels] {
+		append dataDefinitions [format "\n%sdata%d = %s;\n" [lindex $dataLabels $i] $i [FeatureMeasure $i]]
 	}
 	
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
