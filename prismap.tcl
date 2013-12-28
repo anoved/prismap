@@ -41,6 +41,9 @@ floor_thickness = %g; // \[0:10\]
 
 // Must be less than x and y size limits. Set to 0 to disable walls.
 wall_thickness = %g; // \[0:10\]
+
+// Slightly increase xy size of all features to ensure corners overlap rather than coincide. Disabling may cause STL conversion problems with some maps.
+inflation = 1.0001; // [1:Off, 1.0001:On]
 "
 
 scriptSetup
@@ -80,9 +83,9 @@ floorModule
 "
 
 featureModule
-"module feature%d(height, bx, by) {
+"module feature%d(height, bx, by, inflation) {
 	if (height > 0) {
-		translate([bx, by, 0]) scale([1.1, 1.1, 1]) translate([-bx, -by, 0])
+		translate([bx, by, 0]) scale([inflation, inflation, 1]) translate([-bx, -by, 0])
 		linear_extrude(height=height) polygon(points=\[
 %s
 		\], paths=\[
@@ -327,7 +330,7 @@ proc Process {} {
 		set bx [expr {($fxmin + $fxmax) / 2.0}]
 		set by [expr {($fymin + $fymax) / 2.0}]
 		Output $template(featureModule) $i $points $paths
-		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s);\n" $i $i $bx $by]
+		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s, inflation);\n" $i $i $bx $by]
 	}
 	
 	Output $template(prismapModule) $shp(x_offset) $shp(y_offset) $featureCommands
