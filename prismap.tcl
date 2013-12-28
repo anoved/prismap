@@ -80,8 +80,9 @@ floorModule
 "
 
 featureModule
-"module feature%d(height) {
+"module feature%d(height, bx, by) {
 	if (height > 0) {
+		translate([bx, by, 0]) scale([1.1, 1.1, 1]) translate([-bx, -by, 0])
 		linear_extrude(height=height) polygon(points=\[
 %s
 		\], paths=\[
@@ -322,8 +323,11 @@ proc Process {} {
 	# output feature modules - coordinate lists
 	for {set i 0} {$i < $shp(count)} {incr i} {
 		lassign [ReformatCoords [$shp(file) coordinates read $i]] points paths
+		lassign [$shp(file) info bounds $i] fxmin fymin fxmax fymax
+		set bx [expr {($fxmin + $fxmax) / 2.0}]
+		set by [expr {($fymin + $fymax) / 2.0}]
 		Output $template(featureModule) $i $points $paths
-		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d));\n" $i $i]
+		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s);\n" $i $i $bx $by]
 	}
 	
 	Output $template(prismapModule) $shp(x_offset) $shp(y_offset) $featureCommands
