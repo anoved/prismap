@@ -305,6 +305,15 @@ proc ReformatCoords {coords} {
 	return [list [join $points ",\n"] [join $paths ",\n"]]
 }
 
+# return centroid (bounding box center) of feature i as xy tuple
+proc FeatureCentroid {i} {
+	global shp
+	lassign [$shp(file) info bounds $i] xmin ymin xmax ymax
+	set cx [expr {($xmin + $xmax) / 2.0}]
+	set cy [expr {($ymin + $ymax) / 2.0}]
+	return [list $cx $cy]
+}
+
 proc Process {} {
 	global template
 	global config
@@ -334,12 +343,12 @@ proc Process {} {
 	
 	set fid 0
 	foreach i $indices {
+		
 		lassign [ReformatCoords [$shp(file) coordinates read $i]] points paths
-		lassign [$shp(file) info bounds $i] fxmin fymin fxmax fymax
-		set bx [expr {($fxmin + $fxmax) / 2.0}]
-		set by [expr {($fymin + $fymax) / 2.0}]
+		lassign [FeatureCentroid $i] cx cy
+		
 		Output $template(featureModule) $fid $points $paths
-		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s, inflation);\n" $fid $fid $bx $by]
+		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s, inflation);\n" $fid $fid $cx $cy]
 		incr fid
 	}
 	
