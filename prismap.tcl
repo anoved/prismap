@@ -275,14 +275,16 @@ proc FeatureMeasure {id} {
 	}
 }
 
-proc ReformatCoords {coords} {
+proc FeatureGeometry {i} {
+	global shp
+	
 	set points [list]
 	set paths [list]
 	set index 0
 	
-	# coords is a list of one or more coordinate lists,
+	# geometry consists of one or more coordinate lists,
 	# each representing part of a single polygon feature
-	foreach part $coords {
+	foreach part [$shp(file) coordinates read $i] {
 		set part_path [list]
 		
 		# each part list consists of a series of x y vertex coordinates.
@@ -344,7 +346,7 @@ proc Process {} {
 	set fid 0
 	foreach i $indices {
 		
-		lassign [ReformatCoords [$shp(file) coordinates read $i]] points paths
+		lassign [FeatureGeometry $i] points paths
 		lassign [FeatureCentroid $i] cx cy
 		
 		Output $template(featureModule) $fid $points $paths
