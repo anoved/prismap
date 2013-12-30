@@ -63,6 +63,9 @@ Here is the output of `prismap --help`:
 		Label attribute value definitions in the output OpenSCAD script using names
 		read from the named FIELD.
 	
+	--sort
+		Sort features by name. No effect if no name field is specified.
+	
 	Use these options to explicitly set fixed bounds for the extrusion. This is
 	useful to ensure that multiple models (representing a time series, for example)
 	are output at the same scale and are therefore comparable.
