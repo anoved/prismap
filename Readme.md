@@ -95,6 +95,12 @@ Here is the output of `prismap --help`:
 		Extrusion will be scaled so the --upper value would not exceed VALUE
 		output units in the Z dimension. Defaults to smaller of X and Y limit. 
 	
+	--inflation FACTOR
+		Scaling FACTOR applied to all features to ensure corners overlap rather
+		than coincide. Should be greater than or equal to 1. Defaults to 1.
+		OpenSCAD STL export of some maps may fail unless inflation is applied.
+		A neglible inflation factor such as 1.0001 is typically sufficient.
+	
 	MODEL OPTIONS:
 	
 	-f/--floor THICKNESS

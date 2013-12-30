@@ -42,8 +42,8 @@ floor_thickness = %g; // \[0:10\]
 // Must be less than x and y size limits. Set to 0 to disable walls.
 wall_thickness = %g; // \[0:10\]
 
-// Slightly increase xy size of all features to ensure corners overlap rather than coincide. Disabling may cause STL conversion problems with some maps.
-inflation = 1.0001; // [1:Off, 1.0001:On]
+// Scaling factor applied to all features. This is a fudge factor to facilitate STL export; it forces shared edges to overlap rather than coincide.
+inflation = %g;
 "
 
 scriptSetup
@@ -83,7 +83,7 @@ floorModule
 "
 
 featureModule
-"module feature%d(height, bx, by, inflation) {
+"module feature%d(height, bx, by) {
 	if (height > 0) {
 		translate([bx, by, 0]) scale([inflation, inflation, 1]) translate([-bx, -by, 0])
 		linear_extrude(height=height) polygon(points=\[
@@ -339,7 +339,7 @@ proc Process {} {
 	
 	Output $template(header)
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
-	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls)
+	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls) $config(inflation)
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent)
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
@@ -350,7 +350,7 @@ proc Process {} {
 		lassign [FeatureCentroid $i] cx cy
 		
 		Output $template(featureModule) $fid $points $paths
-		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s, inflation);\n" $fid $fid $cx $cy]
+		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s);\n" $fid $fid $cx $cy]
 	}
 	
 	Output $template(prismapModule) $shp(x_offset) $shp(y_offset) $featureCommands
@@ -365,6 +365,7 @@ proc ConfigDefaults {} {
 		x       0.0
 		y       0.0
 		z       0.0
+		inflation 1
 		
 		floor   1.0
 		walls   1.0
@@ -437,6 +438,15 @@ proc ConfigOptions {argl} {
 				}
 				if {$config(z) <= 0} {
 					Abort {Z size limit must be > 0 (%1$s).} $config(z)
+				}
+			}
+			
+			--inflation {
+				if {[scan [lindex $argl [incr a]] %f config(inflation)] != 1} {
+					Abort {Inflation factor must be numeric.}
+				}
+				if {$config(inflation) < 1} {
+					Abort {Inflation factor must be >= 1 (%1$s).} $config(inflation)
 				}
 			}
 			
@@ -605,8 +615,14 @@ are in output units, typically interpreted to be millimeters.
     units in the Y dimension. Defaults to actual Y extent of input features.
 
 -z VALUE
-	Extrusion will be scaled so the --upper value would not exceed VALUE
-	output units in the Z dimension. Defaults to smaller of X and Y limit. 
+    Extrusion will be scaled so the --upper value would not exceed VALUE
+    output units in the Z dimension. Defaults to smaller of X and Y limit. 
+
+--inflation FACTOR
+    Scaling FACTOR applied to all features to ensure corners overlap rather
+    than coincide. Should be greater than or equal to 1. Defaults to 1.
+    OpenSCAD STL export of some maps may fail unless inflation is applied.
+    A neglible inflation factor such as 1.0001 is typically sufficient.
 
 MODEL OPTIONS:
 
