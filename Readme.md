@@ -19,6 +19,28 @@ The model displayed above was generated with the following options:
 
 Note that this example includes disconnected "island" features which may be too small to print successfully. Some prep work to prune unnecessary detail will typically be needed to prepare shapefiles for printing.
 
+## Converting Prismap Output to Printable STL
+
+Prismap outputs an [OpenSCAD](http://www.openscad.org/) script. To convert it to a printable STL model, choose *"Compile and Render"* followed by *"Export as STL"* from OpenSCAD's *"Design"* menu.
+
+![OpenSCAD STL export screenshot](examples/openscad-stl-export.png)
+
+Alternatively, you can convert the model on the command line. Use OpenSCAD's `-o` option to specify the output STL file:
+
+	openscad -o example.stl example.scad
+
+Last but not least, you can upload the OpenSCAD model to [Thingiverse](http://www.thingiverse.com/thing:205980). If you tag the model with `customizer`, Thingiverse will allow you (and others) to customize the model online. Clicking *"Create Thing"* will save a printable STL version of customized model to your Thingiverse account.
+
+![Thingiverse Customizer screenshot](examples/thingiverse-customizer.png)
+
+Use Prismap to generate printable map templates, then share them on Thingiverse in this way to let other people easily remix them with their own data.
+
+## Thingiverse Customizer Examples
+
+- [Northeast US States](http://www.thingiverse.com/thing:205980): the original example given above is available on Thingiverse. The data is random.
+- [Contiguous United States Prism Map](http://www.thingiverse.com/thing:209005): a customizable prism map of the lower 48 states. Initial dataset is 2010 population density. 
+- [Binghamton Election District Maps](http://www.thingiverse.com/thing:215978): a pair of prism maps of election districts of the city of Binghamton, NY. Initial datasets are 2010 population density and 2013 mayoral election voter turnout. Compare and contrast.
+
 ## Usage
 
 Here is the output of `prismap --help`:
@@ -121,22 +143,6 @@ Here is the output of `prismap --help`:
 	
 	--help
 		Display this usage message.
-
-## Converting Prismap's Output to Printable STL
-
-Prismap outputs an [OpenSCAD](http://www.openscad.org/) script. To convert it to a printable STL model, choose *"Compile and Render"* followed by *"Export as STL"* from OpenSCAD's *"Design"* menu.
-
-![OpenSCAD STL export screenshot](examples/openscad-stl-export.png)
-
-Alternatively, you can convert the model on the command line. Use OpenSCAD's `-o` option to specify the output STL file:
-
-	openscad -o example.stl example.scad
-
-Last but not least, you can upload the OpenSCAD model to [Thingiverse](http://www.thingiverse.com/thing:205980). If you tag the model with `customizer`, Thingiverse will allow you (and others) to customize the model online. Clicking *"Create Thing"* will save a printable STL version of customized model to your Thingiverse account.
-
-![Thingiverse Customizer screenshot](examples/thingiverse-customizer.png)
-
-Use Prismap to generate printable map templates, then share them on Thingiverse in this way to let other people easily remix them with their own data.
 
 ## Prerequisites
 
