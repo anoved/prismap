@@ -326,14 +326,15 @@ proc Process {} {
 		lappend labels [FeatureLabel $i]
 	}
 	
+	# shpindices lists the shapefile feature indices in output order
 	if {$config(sort)} {
-		set indices [lsort -indices $labels]
+		set shpindices [lsort -indices $labels]
+	} else {
+		set shpindices $indices
 	}
 	
-	set fid 0
-	foreach i $indices {
+	foreach i $shpindices fid $indices {
 		append dataDefinitions [format "\n%sdata%d = %s;\n" [lindex $labels $i] $fid [FeatureMeasure $i]]
-		incr fid
 	}
 	
 	Output $template(header)
@@ -343,15 +344,13 @@ proc Process {} {
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
 	
-	set fid 0
-	foreach i $indices {
+	foreach i $shpindices fid $indices {
 		
 		lassign [FeatureGeometry $i] points paths
 		lassign [FeatureCentroid $i] cx cy
 		
 		Output $template(featureModule) $fid $points $paths
 		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s, inflation);\n" $fid $fid $cx $cy]
-		incr fid
 	}
 	
 	Output $template(prismapModule) $shp(x_offset) $shp(y_offset) $featureCommands
