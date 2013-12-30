@@ -310,32 +310,37 @@ proc Process {} {
 	global config
 	global shp
 	
-	Output $template(header)
-	
-	# prepare default data definitions
 	for {set i 0} {$i < $shp(count)} {incr i} {
-		lappend dataLabels [FeatureLabel $i]
+		lappend indices $i
+		lappend labels [FeatureLabel $i]
 	}
 	
-	# sort by label
-	foreach i [lsort -indices $dataLabels] {
-		append dataDefinitions [format "\n%sdata%d = %s;\n" [lindex $dataLabels $i] $i [FeatureMeasure $i]]
+	if {$config(sort)} {
+		set indices [lsort -indices $labels]
 	}
 	
+	set fid 0
+	foreach i $indices {
+		append dataDefinitions [format "\n%sdata%d = %s;\n" [lindex $labels $i] $fid [FeatureMeasure $i]]
+		incr fid
+	}
+	
+	Output $template(header)
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls)
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent)
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
 	
-	# output feature modules - coordinate lists
-	for {set i 0} {$i < $shp(count)} {incr i} {
+	set fid 0
+	foreach i $indices {
 		lassign [ReformatCoords [$shp(file) coordinates read $i]] points paths
 		lassign [$shp(file) info bounds $i] fxmin fymin fxmax fymax
 		set bx [expr {($fxmin + $fxmax) / 2.0}]
 		set by [expr {($fymin + $fymax) / 2.0}]
-		Output $template(featureModule) $i $points $paths
-		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s, inflation);\n" $i $i $bx $by]
+		Output $template(featureModule) $fid $points $paths
+		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s, inflation);\n" $fid $fid $bx $by]
+		incr fid
 	}
 	
 	Output $template(prismapModule) $shp(x_offset) $shp(y_offset) $featureCommands
@@ -359,6 +364,7 @@ proc ConfigDefaults {} {
 		default 0
 		names   {}
 		out     {}
+		sort    0
 		
 		verbose 0
 	}
@@ -446,6 +452,9 @@ proc ConfigOptions {argl} {
 					Abort {Output path set multiple times.}
 				}
 				set config(out) [lindex $argl [incr a]]
+			}
+			--sort {
+				set config(sort) 1
 			}
 			--debug {
 				set config(verbose) 1
