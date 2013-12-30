@@ -328,7 +328,7 @@ proc Process {} {
 	
 	# shpindices lists the shapefile feature indices in output order
 	if {$config(sort)} {
-		set shpindices [lsort -indices $labels]
+		set shpindices [lsort -dictionary -indices $labels]
 	} else {
 		set shpindices $indices
 	}
