@@ -82,10 +82,21 @@ floorModule
 }
 "
 
+inflateModule
+"// Scale children modules around point
+module Inflate(x, y) {
+	if (inflation == 1) {
+		child();
+	}
+	else {
+		translate([x, y, 0]) scale([inflation, inflation, 1]) translate([-x, -y, 0]) child();
+	}
+}
+"
+
 featureModule
-"module feature%d(height, bx, by) {
+"module feature%d(height) {
 	if (height > 0) {
-		translate([bx, by, 0]) scale([inflation, inflation, 1]) translate([-bx, -by, 0])
 		linear_extrude(height=height) polygon(points=\[
 %s
 		\], paths=\[
@@ -343,6 +354,7 @@ proc Process {} {
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent)
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
+	Output $template(inflateModule)
 	
 	foreach i $shpindices fid $indices {
 		
@@ -350,7 +362,7 @@ proc Process {} {
 		lassign [FeatureCentroid $i] cx cy
 		
 		Output $template(featureModule) $fid $points $paths
-		append featureCommands [format "\t\t\tfeature%d(extrusionheight(data%d), %s, %s);\n" $fid $fid $cx $cy]
+		append featureCommands [format "\t\t\tInflate(%s, %s) feature%d(extrusionheight(data%d));\n" $cx $cy $fid $fid]
 	}
 	
 	Output $template(prismapModule) $shp(x_offset) $shp(y_offset) $featureCommands
