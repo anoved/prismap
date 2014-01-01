@@ -89,20 +89,26 @@ module Inflate(x, y) {
 		child();
 	}
 	else {
-		translate([x, y, 0]) scale([inflation, inflation, 1]) translate([-x, -y, 0]) child();
+		translate(\[x, y, 0\]) scale(\[inflation, inflation, 1\]) translate(\[-x, -y, 0\]) child();
+	}
+}
+"
+
+extrudeModule
+"module Extrude(height) {
+	if (height > 0) {
+		linear_extrude(height=height) child();
 	}
 }
 "
 
 featureModule
-"module feature%d(height) {
-	if (height > 0) {
-		linear_extrude(height=height) polygon(points=\[
+"module feature%d() {
+	polygon(points=\[
 %s
 		\], paths=\[
 %s
-		\]);
-	}
+	\]);
 }
 "
 
@@ -303,7 +309,7 @@ proc FeatureGeometry {i} {
 		foreach {x y} [lrange $part 0 end-2] {
 			
 			# vertices of all parts in the feature are accumulated in a single list...
-			lappend points [format "\t\t\t\[%s, %s\]" $x $y]
+			lappend points [format "\t\t\[%s, %s\]" $x $y]
 			
 			# ... but the indices of the vertices that make up each part are grouped...
 			lappend part_path $index
@@ -311,7 +317,7 @@ proc FeatureGeometry {i} {
 		}
 		
 		# ... and each part's path is appended to the feature's path list when complete.
-		lappend paths [format "\t\t\t\[%s\]" [join $part_path ","]]
+		lappend paths [format "\t\t\[%s\]" [join $part_path ","]]
 	}
 	
 	# return tuple of OpenSCAD polygon() points= and paths= values.
@@ -355,6 +361,7 @@ proc Process {} {
 	Output $template(floorModule) $shp(xmin) $shp(ymin)
 	Output $template(wallsModule)
 	Output $template(inflateModule)
+	Output $template(extrudeModule)
 	
 	foreach i $shpindices fid $indices {
 		
@@ -362,7 +369,7 @@ proc Process {} {
 		lassign [FeatureCentroid $i] cx cy
 		
 		Output $template(featureModule) $fid $points $paths
-		append featureCommands [format "\t\t\tInflate(%s, %s) feature%d(extrusionheight(data%d));\n" $cx $cy $fid $fid]
+		append featureCommands [format "\t\t\tInflate(%s, %s) Extrude(extrusionheight(data%d)) feature%d();\n" $cx $cy $fid $fid]
 	}
 	
 	Output $template(prismapModule) $shp(x_offset) $shp(y_offset) $featureCommands
