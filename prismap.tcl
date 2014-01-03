@@ -3,6 +3,9 @@
 package require shapetcl
 package require msgcat
 
+# (TODO: should be optional, with reprojection enabled only if mapproj available)
+package require mapproj
+
 ::msgcat::mcload [file join [file dirname [info script]] {msgs}]
 
 array set template {
@@ -227,6 +230,9 @@ proc OpenShapefile {} {
 	# xmin, xmax, ymin, ymax - geometry bounding box
 	lassign [$shp(file) info bounds] shp(xmin) shp(ymin) shp(xmax) shp(ymax)
 	
+	lassign [Reproject $shp(xmin) $shp(ymin)] shp(xmin) shp(ymin)
+	lassign [Reproject $shp(xmax) $shp(ymax)] shp(xmax) shp(ymax)
+	
 	# x_offset, y_offset - translation from bounding box center to origin
 	set shp(x_offset) [expr {($shp(xmax) + $shp(xmin)) / -2.0}]
 	set shp(y_offset) [expr {($shp(ymax) + $shp(ymin)) / -2.0}]
@@ -292,6 +298,17 @@ proc FeatureMeasure {id} {
 	}
 }
 
+proc Reproject {x y} {
+	
+	# Hard coded test for now.
+	# - Assumes geographic input coordinates (x=lon, y=lat)
+	# - Outputs Albers Equal Area Conic North American in mapproj's weird 'Earth radii map co-oordinates'
+	
+	lassign [::mapproj::toAlbersEqualAreaConic -96 40 20 60 $x $y] rx ry
+	
+	return [list [expr {$rx * 1000.0}] [expr {$ry * 1000.0}]]
+}
+
 proc FeatureGeometry {i} {
 	global shp
 	
@@ -307,6 +324,8 @@ proc FeatureGeometry {i} {
 		# each part list consists of a series of x y vertex coordinates.
 		# the last vertex repeats the first and can be ignored.
 		foreach {x y} [lrange $part 0 end-2] {
+			
+			lassign [Reproject $x $y] x y
 			
 			# vertices of all parts in the feature are accumulated in a single list...
 			lappend points [format "\t\t\[%s, %s\]" $x $y]
@@ -330,6 +349,7 @@ proc FeatureCentroid {i} {
 	lassign [$shp(file) info bounds $i] xmin ymin xmax ymax
 	set cx [expr {($xmin + $xmax) / 2.0}]
 	set cy [expr {($ymin + $ymax) / 2.0}]
+	lassign [Reproject $cx $cy] cx cy
 	return [list $cx $cy]
 }
 
