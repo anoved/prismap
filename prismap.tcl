@@ -80,8 +80,8 @@ wallsModule
 
 floorModule
 "module Floor() {
-	translate(\[%g, %g, 0\])
-		cube(\[x_extent, y_extent, floor_thickness > 0 ? floor_thickness : wall_thickness\]);
+	linear_extrude(height = floor_thickness > 0 ? floor_thickness : wall_thickness)	
+	polygon(points=\[\[%g, %g\], \[%g, %g\], \[%g, %g\], \[%g, %g\]\]);
 }
 "
 
@@ -229,6 +229,11 @@ proc OpenShapefile {} {
 	
 	# xmin, xmax, ymin, ymax - geometry bounding box
 	lassign [$shp(file) info bounds] shp(xmin) shp(ymin) shp(xmax) shp(ymax)
+	
+	set shp(bb_1) [Reproject $shp(xmin) $shp(ymax)]
+	set shp(bb_2) [Reproject $shp(xmax) $shp(ymax)]
+	set shp(bb_3) [Reproject $shp(xmax) $shp(ymin)]
+	set shp(bb_4) [Reproject $shp(xmin) $shp(ymin)]
 	
 	lassign [Reproject $shp(xmin) $shp(ymin)] shp(xmin) shp(ymin)
 	lassign [Reproject $shp(xmax) $shp(ymax)] shp(xmax) shp(ymax)
@@ -378,7 +383,7 @@ proc Process {} {
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls) $config(inflation)
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent)
-	Output $template(floorModule) $shp(xmin) $shp(ymin)
+	Output $template(floorModule) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
 	Output $template(wallsModule)
 	Output $template(inflateModule)
 	Output $template(extrudeModule)
