@@ -71,10 +71,14 @@ Prismap();
 
 wallsModule
 "module Walls() {
-	translate(\[((x_extent / -2) * xy_scale) - wall_thickness, (y_extent / -2) * xy_scale, 0\])
-		cube(\[wall_thickness, (y_extent * xy_scale) + wall_thickness, z_size_limit\]);
-	translate(\[(x_extent / -2) * xy_scale, (y_extent / 2) * xy_scale, 0\])
-		cube(\[x_extent * xy_scale, wall_thickness, z_size_limit\]);
+	linear_extrude(height = z_size_limit)
+	polygon(points=\[
+			\[%1$g, %2$g\],
+			\[%3$g, %4$g\],
+			\[%5$g, %6$g\],
+			\[%5$g, %6$g + wall_thickness/xy_scale\],
+			\[%3$g - wall_thickness/xy_scale, %4$g + wall_thickness/xy_scale\],
+			\[%1$g - wall_thickness/xy_scale, %2$g\]\]);
 }
 "
 
@@ -118,12 +122,12 @@ featureModule
 prismapModule
 "module Prismap() {
 	union() {
-		if (wall_thickness > 0) {
-			Walls();
-		}
 		scale(\[xy_scale, xy_scale, 1\]) translate(\[%g, %g, 0\]) {
 			if (floor_thickness > 0 || wall_thickness > 0) {
 				Floor();
+			}
+			if (wall_thickness > 0) {
+				Walls();
 			}
 %s		}
 	}
@@ -384,7 +388,7 @@ proc Process {} {
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls) $config(inflation)
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent)
 	Output $template(floorModule) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
-	Output $template(wallsModule)
+	Output $template(wallsModule) {*}$shp(bb_4) {*}$shp(bb_1) {*}$shp(bb_2)
 	Output $template(inflateModule)
 	Output $template(extrudeModule)
 	
