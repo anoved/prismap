@@ -52,15 +52,13 @@ inflation = %g;
 scriptSetup
 "/* \[Hidden\] */
 
-x_extent = %g;
-
-y_extent = %g;
+extent = [%g, %g];
 
 z_scale = (z_size_limit - ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness)) / (upper_bound - lower_bound);
 
-x_scale = (x_size_limit - wall_thickness) / x_extent;
+x_scale = (x_size_limit - wall_thickness) / extent[0];
 
-y_scale = (y_size_limit - wall_thickness) / y_extent;
+y_scale = (y_size_limit - wall_thickness) / extent[1];
 
 xy_scale = min(x_scale, y_scale);
 
