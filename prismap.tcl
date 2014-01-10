@@ -52,13 +52,15 @@ inflation = %g;
 scriptSetup
 "/* \[Hidden\] */
 
-extent = [%g, %g];
+extent = \[%g, %g\];
+
+bounds = \[\[%g, %g\], \[%g, %g\], \[%g, %g\], \[%g, %g\]\];
 
 z_scale = (z_size_limit - ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness)) / (upper_bound - lower_bound);
 
-x_scale = (x_size_limit - wall_thickness) / extent[0];
+x_scale = (x_size_limit - wall_thickness) / extent\[0\];
 
-y_scale = (y_size_limit - wall_thickness) / extent[1];
+y_scale = (y_size_limit - wall_thickness) / extent\[1\];
 
 xy_scale = min(x_scale, y_scale);
 
@@ -71,19 +73,20 @@ wallsModule
 "module Walls() {
 	linear_extrude(height = z_size_limit)
 	polygon(points=\[
-			\[%1$g, %2$g\],
-			\[%3$g, %4$g\],
-			\[%5$g, %6$g\],
-			\[%5$g, %6$g + wall_thickness/xy_scale\],
-			\[%3$g - wall_thickness/xy_scale, %4$g + wall_thickness/xy_scale\],
-			\[%1$g - wall_thickness/xy_scale, %2$g\]\]);
+			bounds\[3\],
+			bounds\[0\],
+			bounds\[1\],
+			\[bounds\[1\]\[0\], bounds\[1\]\[1\] + wall_thickness/xy_scale\],
+			\[bounds\[0\]\[0\] - wall_thickness/xy_scale, bounds\[0\]\[1\] + wall_thickness/xy_scale\],
+			\[bounds\[3\]\[0\] - wall_thickness/xy_scale, bounds\[3\]\[1\]\]
+			\]);
 }
 "
 
 floorModule
 "module Floor() {
 	linear_extrude(height = floor_thickness > 0 ? floor_thickness : wall_thickness)	
-	polygon(points=\[\[%g, %g\], \[%g, %g\], \[%g, %g\], \[%g, %g\]\]);
+	polygon(points=bounds);
 }
 "
 
@@ -384,9 +387,9 @@ proc Process {} {
 	Output $template(header)
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls) $config(inflation)
-	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent)
-	Output $template(floorModule) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
-	Output $template(wallsModule) {*}$shp(bb_4) {*}$shp(bb_1) {*}$shp(bb_2)
+	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
+	Output $template(floorModule)
+	Output $template(wallsModule)
 	Output $template(inflateModule)
 	Output $template(extrudeModule)
 	
