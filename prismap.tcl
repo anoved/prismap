@@ -8,6 +8,10 @@ package require mapproj
 
 ::msgcat::mcload [file join [file dirname [info script]] {msgs}]
 
+array set projections {
+	toAlbersEqualAreaConic {%f %f %f %f}
+}
+
 array set template {
 
 header
@@ -308,13 +312,50 @@ proc FeatureMeasure {id} {
 	}
 }
 
+# projspec is the string recieved from the command line describing the projection
+proc SetProjection {projspec} {
+	
+	global projections
+	
+	# projections is an array like:
+	# array set projections {toAlbersEqualAreaConic {%f %f %f %f}}
+	
+	set name [lindex $projspec 0]
+	set params [lrange $projspec 1 end]
+	
+	if {![info exists projections($name)]} {
+		error [format "Unrecognized projection: %s" $name]
+	}
+	
+	if {[llength $params] != [llength $projections($name)]} {
+		error [format "Expected %d projection parameters." [llength $projections($name)]]
+	}
+	
+	# asserts that projection parameters are numeric,
+	# but does not guard against projection-specific domain errors
+	# (eg, valid parameter values may be constrained to a certain range)
+	foreach param $params {
+		if {![string is double $param]} {
+			error [format "Projection parameters should be numeric (%s is not)" $param]
+		}
+	}
+	
+	return [format "::mapproj::$name $projections($name)" {*}$params]
+}
+
 proc Reproject {x y} {
+	global config
 	
-	# Hard coded test for now.
-	# - Assumes geographic input coordinates (x=lon, y=lat)
-	# - Outputs Albers Equal Area Conic North American in mapproj's weird 'Earth radii map co-oordinates'
 	
-	lassign [::mapproj::toAlbersEqualAreaConic -96 40 20 60 $x $y] rx ry
+	# maybe make this whole reproject proc dynamically defined,
+	# so that the x1000 fudge factor can be included if necessary
+	# and no per-coordinate check for projproc is needed.
+	
+	if {$config(projproc) == {}} {
+		return [list $x $y]
+	}
+	
+	lassign [{*}$config(projproc) $x $y] rx ry
 	
 	return [list [expr {$rx * 1000.0}] [expr {$ry * 1000.0}]]
 }
@@ -415,6 +456,8 @@ proc ConfigDefaults {} {
 		y       0.0
 		z       0.0
 		inflation 1
+		projname {}
+		projproc {}
 		
 		floor   1.0
 		walls   1.0
@@ -490,6 +533,10 @@ proc ConfigOptions {argl} {
 				}
 			}
 			
+			--projection {
+				set config(projname) [lindex $argl [incr a]]
+			}
+			
 			--inflation {
 				if {[scan [lindex $argl [incr a]] %f config(inflation)] != 1} {
 					Abort {Inflation factor must be numeric.}
@@ -535,6 +582,12 @@ proc ConfigOptions {argl} {
 			default {
 				Abort {Unrecognized option: %1$s} $arg
 			}
+		}
+	}
+	
+	if {$config(projname) != {}} {
+		if {[catch {SetProjection $config(projname)} config(projproc)]} {
+			Abort $config(projproc)
 		}
 	}
 	
