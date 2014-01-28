@@ -9,7 +9,32 @@ package require mapproj
 ::msgcat::mcload [file join [file dirname [info script]] {msgs}]
 
 array set projections {
-	toAlbersEqualAreaConic {%f %f %f %f}
+	toPlateCarree                 {%f %f}
+	toCylindricalEqualArea        {%f %f}
+	toMercator                    {%f %f}
+	toMillerCylindrical           {%f}
+	toSinusoidal                  {%f %f}
+	toMollweide                   {%f}
+	toEckertIV                    {%f}
+	toEckertVI                    {%f}
+	toRobinson                    {%f}
+	toCassini                     {%f %f}
+	toPeirceQuincuncial           {%f}
+	toOrthographic                {%f %f}
+	toStereographic               {%f %f}
+	toGnomonic                    {%f %f}
+	toAzimuthalEquidistant        {%f %f}
+	toLambertAzimuthalEqualArea   {%f %f}
+	toHammer                      {%f}
+	toConicEquidistant            {%f %f %f %f}
+	toAlbersEqualAreaConic        {%f %f %f %f}
+	toLambertConformalConic       {%f %f %f %f}
+	toLambertCylindricalEqualArea {%f %f}
+	toBehrmann                    {%f %f}
+	toTrystanEdwards              {%f %f}
+	toHoboDyer                    {%f %f}
+	toGallPeters                  {%f %f}
+	toBalthasart                  {%f %f}
 }
 
 array set template {
