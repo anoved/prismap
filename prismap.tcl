@@ -368,23 +368,6 @@ proc SetProjection {projspec} {
 	return [format "::mapproj::$name $projections($name)" {*}$params]
 }
 
-proc Reproject {x y} {
-	global config
-	
-	
-	# maybe make this whole reproject proc dynamically defined,
-	# so that the x1000 fudge factor can be included if necessary
-	# and no per-coordinate check for projproc is needed.
-	
-	if {$config(projproc) == {}} {
-		return [list $x $y]
-	}
-	
-	lassign [{*}$config(projproc) $x $y] rx ry
-	
-	return [list [expr {$rx * 1000.0}] [expr {$ry * 1000.0}]]
-}
-
 proc FeatureGeometry {i} {
 	global shp
 	
@@ -482,7 +465,6 @@ proc ConfigDefaults {} {
 		z       0.0
 		inflation 1
 		projname {}
-		projproc {}
 		
 		floor   1.0
 		walls   1.0
@@ -611,9 +593,24 @@ proc ConfigOptions {argl} {
 	}
 	
 	if {$config(projname) != {}} {
-		if {[catch {SetProjection $config(projname)} config(projproc)]} {
-			Abort $config(projproc)
+		
+		if {[catch {SetProjection $config(projname)} projproc]} {
+			Abort $projproc
 		}
+		
+		# if a projection is defined, Reproject transforms lon/lat to get x y
+		proc Reproject {lambda phi} [format {
+			lassign [%s $lambda $phi] x y
+			return [list [expr {$x * 1000.0}] [expr {$y * 1000.0}]]
+		} $projproc]
+		
+	} else {
+		
+		# if no projection is given, Reproject simply returns lon/lat as x y
+		proc Reproject {lambda phi} {
+			return [list $lambda $phi]
+		}
+		
 	}
 	
 	# check for required arguments
