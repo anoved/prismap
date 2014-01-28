@@ -68,6 +68,9 @@ y_size_limit = %g;
 // Maximum z size in output units (typically mm).
 z_size_limit = %g;
 
+// Must be less than z size limit.
+base_thickness = %g; // \[0:10\]
+
 // Must be less than z size limit. Set to 0 to disable floor. (Floor thickness is automatically set to wall thickness if floor is disabled and walls are enabled.)
 floor_thickness = %g; // \[0:10\]
 
@@ -85,7 +88,7 @@ extent = \[%g, %g\];
 
 bounds = \[\[%g, %g\], \[%g, %g\], \[%g, %g\], \[%g, %g\]\];
 
-z_scale = (z_size_limit - ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness)) / (upper_bound - lower_bound);
+z_scale = (z_size_limit - ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness) - base_thickness) / (upper_bound - lower_bound);
 
 x_scale = (x_size_limit - wall_thickness) / extent\[0\];
 
@@ -93,7 +96,7 @@ y_scale = (y_size_limit - wall_thickness) / extent\[1\];
 
 xy_scale = min(x_scale, y_scale);
 
-function extrusionheight(value) = ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness) + (z_scale * (value - lower_bound));
+function extrusionheight(value) = ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness) + base_thickness + (z_scale * (value - lower_bound));
 
 Prismap();
 "
@@ -435,7 +438,7 @@ proc Process {} {
 	
 	Output $template(header)
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
-	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(floor) $config(walls) $config(inflation)
+	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(base) $config(floor) $config(walls) $config(inflation)
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
 	Output $template(floorModule)
 	Output $template(wallsModule)
@@ -466,6 +469,7 @@ proc ConfigDefaults {} {
 		inflation 1
 		projname {}
 		
+		base    0.0
 		floor   1.0
 		walls   1.0
 		
@@ -486,6 +490,15 @@ proc ConfigOptions {argl} {
 	for {set a 0} {$a < [llength $argl]} {incr a} {
 		set arg [lindex $argl $a]
 		switch -- $arg {
+			
+			-b - --base {
+				if {[scan [lindex $argl [incr a]] %f config(base)] != 1} {
+					Abort {Base thickness must be numeric.}
+				}
+				if {$config(base) < 0} {
+					Abort {Base thickness must be >= 0 (%1$s).} $config(base)
+				}
+			}
 			
 			-f - --floor {
 				if {[scan [lindex $argl [incr a]] %f config(floor)] != 1} {
