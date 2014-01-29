@@ -264,16 +264,16 @@ proc OpenShapefile {} {
 		}
 	}
 	
-	# xmin, xmax, ymin, ymax - geometry bounding box
-	lassign [$shp(file) info bounds] shp(xmin) shp(ymin) shp(xmax) shp(ymax)
+	# xming, xmaxg, yming, ymaxg - geometry bounding box (unprojected)
+	lassign [$shp(file) info bounds] shp(xming) shp(yming) shp(xmaxg) shp(ymaxg)
 	
-	set shp(bb_1) [Reproject $shp(xmin) $shp(ymax)]
-	set shp(bb_2) [Reproject $shp(xmax) $shp(ymax)]
-	set shp(bb_3) [Reproject $shp(xmax) $shp(ymin)]
-	set shp(bb_4) [Reproject $shp(xmin) $shp(ymin)]
+	set shp(bb_1) [Reproject $shp(xming) $shp(ymaxg)]
+	set shp(bb_2) [Reproject $shp(xmaxg) $shp(ymaxg)]
+	set shp(bb_3) [Reproject $shp(xmaxg) $shp(yming)]
+	set shp(bb_4) [Reproject $shp(xming) $shp(yming)]
 	
-	lassign [Reproject $shp(xmin) $shp(ymin)] shp(xmin) shp(ymin)
-	lassign [Reproject $shp(xmax) $shp(ymax)] shp(xmax) shp(ymax)
+	lassign [Reproject $shp(xming) $shp(yming)] shp(xmin) shp(ymin)
+	lassign [Reproject $shp(xmaxg) $shp(ymaxg)] shp(xmax) shp(ymax)
 	
 	# x_offset, y_offset - translation from bounding box center to origin
 	set shp(x_offset) [expr {($shp(xmax) + $shp(xmin)) / -2.0}]
@@ -415,6 +415,36 @@ proc FeatureCentroid {i} {
 	return [list $cx $cy]
 }
 
+
+# dumps a point list to stdout - substitute for Floor() module points list
+# to get a floor polygon that is approximately adjusted for projection.
+# Just interpolates 10 segments. Same intervals should be used for walls.
+proc Floorpan {} {
+	global shp
+	
+	set x_interval [expr {($shp(xmaxg) - $shp(xming)) / 10}]
+	set y_interval [expr {($shp(ymaxg) - $shp(yming)) / 10}]
+	
+	for {set i 0} {$i <= 10} {incr i} {
+		
+		lassign [Reproject [expr {$shp(xming) + ($i * $x_interval)}] $shp(ymaxg)] x y
+		lappend p1 "\[$x, $y\]"
+		
+		lassign [Reproject $shp(xmaxg) [expr {$shp(ymaxg) - ($i * $y_interval)}]] x y
+		lappend p2 "\[$x, $y\]"
+		
+		lassign [Reproject [expr {$shp(xmaxg) - ($i * $x_interval)}] $shp(yming)] x y
+		lappend p3 "\[$x, $y\]"
+		
+		lassign [Reproject $shp(xming) [expr {$shp(yming) + ($i * $y_interval)}]] x y
+		lappend p4 "\[$x, $y\]"
+	}
+	
+	set points [format {[%s, %s, %s, %s]} [join $p1 {,}] [join $p2 {,}] [join $p3 {,}] [join $p4 {,}]]
+	
+	puts $points
+}
+
 proc Process {} {
 	global template
 	global config
@@ -441,6 +471,7 @@ proc Process {} {
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(base) $config(floor) $config(walls) $config(inflation)
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
 	Output $template(floorModule)
+	Floorpan
 	Output $template(wallsModule)
 	Output $template(inflateModule)
 	Output $template(extrudeModule)
