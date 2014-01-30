@@ -415,6 +415,17 @@ proc FeatureCentroid {i} {
 	return [list $cx $cy]
 }
 
+proc wall_offset {} {
+	global config
+	global shp
+	# compute x/y extents from maxg-ming instead of using cached _extents,
+	# which are based on projected min/max. We want original extent.
+	# it would be tidier to compute and cache this where shp is set up.
+	set y_scale [expr {($config(y) - $config(walls)) / ($shp(ymaxg) - $shp(yming))}]
+	set x_scale [expr {($config(x) - $config(walls)) / ($shp(xmaxg) - $shp(xming))}]
+	set xy_scale [expr {min($x_scale, $y_scale)}]
+	return [expr {$config(walls) / double($xy_scale)}]
+}
 
 # dumps a point list to stdout - substitute for Floor() module points list
 # to get a floor polygon that is approximately adjusted for projection.
@@ -424,26 +435,48 @@ proc Floorpan {} {
 	
 	set x_interval [expr {($shp(xmaxg) - $shp(xming)) / 10}]
 	set y_interval [expr {($shp(ymaxg) - $shp(yming)) / 10}]
+	set wall_offset [wall_offset]
 	
 	for {set i 0} {$i <= 10} {incr i} {
 		
+		# 0 to 1
 		lassign [Reproject [expr {$shp(xming) + ($i * $x_interval)}] $shp(ymaxg)] x y
 		lappend p1 "\[$x, $y\]"
 		
+		# 1 to 0, a bit past ymax (for wall thickness)
+		lassign [Reproject [expr {$shp(xmaxg) - ($i * $x_interval)}] [expr {$shp(ymaxg) + $wall_offset}]] x y
+		lappend p1wall "\[$x, $y\]"
+		
+		# 1 to 2
 		lassign [Reproject $shp(xmaxg) [expr {$shp(ymaxg) - ($i * $y_interval)}]] x y
 		lappend p2 "\[$x, $y\]"
 		
+		# 2 to 3
 		lassign [Reproject [expr {$shp(xmaxg) - ($i * $x_interval)}] $shp(yming)] x y
 		lappend p3 "\[$x, $y\]"
 		
+		# 3 to 0
 		lassign [Reproject $shp(xming) [expr {$shp(yming) + ($i * $y_interval)}]] x y
 		lappend p4 "\[$x, $y\]"
+		
+		# 0 to 3, a bit below xmin (for wall thickness)
+		lassign [Reproject [expr {$shp(xming) - $wall_offset}] [expr {$shp(ymaxg) - ($i * $y_interval)}]] x y
+		lappend p4wall "\[$x, $y\]"
 	}
 	
-	set points [format {[%s, %s, %s, %s]} [join $p1 {,}] [join $p2 {,}] [join $p3 {,}] [join $p4 {,}]]
 	
-	puts $points
+	set floor_points [format {[%s, %s, %s, %s]} [join $p1 {,}] [join $p2 {,}] [join $p3 {,}] [join $p4 {,}]]
+	puts $floor_points
+	
+	
+	# compute corner point for walls	
+	lassign [Reproject [expr {$shp(xming) - $wall_offset}] [expr {$shp(ymaxg) + $wall_offset}]] x y
+	
+	
+	set walls_points [format {[%s, %s, %s, %s, %s]} [join $p4 {,}] [join $p1 {,}] [join $p1wall {,}] [format {[%s, %s]} $x $y] [join $p4wall {,}]]
+	puts $walls_points
 }
+
 
 proc Process {} {
 	global template
