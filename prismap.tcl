@@ -402,13 +402,16 @@ proc FeatureCentroid {i} {
 proc wall_offset {} {
 	global config
 	global shp
+	
+	# if walls are off (0 given as thickness), use 1.0 as default
+	set walls [expr {$config(walls) == 0 ? 1.0 : $config(walls)}]
+	
 	# compute x/y extents from maxg-ming instead of using cached _extents,
 	# which are based on projected min/max. We want original extent.
-	# it would be tidier to compute and cache this where shp is set up.
-	set y_scale [expr {($config(y) - $config(walls)) / ($shp(ymaxg) - $shp(yming))}]
-	set x_scale [expr {($config(x) - $config(walls)) / ($shp(xmaxg) - $shp(xming))}]
+	set y_scale [expr {($config(y) - $walls) / ($shp(ymaxg) - $shp(yming))}]
+	set x_scale [expr {($config(x) - $walls) / ($shp(xmaxg) - $shp(xming))}]
 	set xy_scale [expr {min($x_scale, $y_scale)}]
-	return [expr {$config(walls) / double($xy_scale)}]
+	return [expr {$walls / double($xy_scale)}]
 }
 
 proc Floorpan {} {
