@@ -460,7 +460,7 @@ proc Floorpan {} {
 	
 	
 	set floor_points [format {[%s, %s, %s, %s]} [join $p1 {,}] [join $p2 {,}] [join $p3 {,}] [join $p4 {,}]]
-	puts $floor_points
+	#puts $floor_points
 	
 	
 	
@@ -501,7 +501,7 @@ proc Process {} {
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(base) $config(floor) $config(walls) $config(inflation)
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
 	
-	lassign [Floorpan] $floor_points $walls_points
+	lassign [Floorpan] floor_points walls_points
 	Output $template(floorModule) $floor_points
 	Output $template(wallsModule) $walls_points
 	Output $template(inflateModule)
