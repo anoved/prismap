@@ -411,18 +411,16 @@ proc wall_offset {} {
 	return [expr {$config(walls) / double($xy_scale)}]
 }
 
-
-# dumps a point list to stdout - substitute for Floor() module points list
-# to get a floor polygon that is approximately adjusted for projection.
-# Just interpolates 10 segments. Same intervals should be used for walls.
 proc Floorpan {} {
 	global shp
 	
-	set x_interval [expr {($shp(xmaxg) - $shp(xming)) / 10}]
-	set y_interval [expr {($shp(ymaxg) - $shp(yming)) / 10}]
+	set segments 10
+	
+	set x_interval [expr {($shp(xmaxg) - $shp(xming)) / double($segments)}]
+	set y_interval [expr {($shp(ymaxg) - $shp(yming)) / double($segments)}]
 	set wall_offset [wall_offset]
 	
-	for {set i 0} {$i <= 10} {incr i} {
+	for {set i 0} {$i <= $segments} {incr i} {
 		
 		# 0 to 1
 		lassign [Reproject [expr {$shp(xming) + ($i * $x_interval)}] $shp(ymaxg)] x y
