@@ -85,8 +85,6 @@ scriptSetup
 
 extent = \[%g, %g\];
 
-bounds = \[\[%g, %g\], \[%g, %g\], \[%g, %g\], \[%g, %g\]\];
-
 z_scale = (z_size_limit - base_thickness) / (upper_bound - lower_bound);
 
 x_scale = x_size_limit / extent\[0\];
@@ -503,7 +501,7 @@ proc Process {} {
 	# in this layer, config(floor) represents floor thickness, but we pass it to the OpenSCAD script
 	# as a boolean - just whether or not the floor has nonzero thickness
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(base) [expr {$config(floor) > 0}] $config(walls) $config(inflation)
-	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
+	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent)
 	
 	lassign [Floorpan] floor_points walls_points
 	Output $template(floorModule) $floor_points
