@@ -71,8 +71,7 @@ z_size_limit = %g;
 // Must be less than z size limit.
 base_thickness = %g; // \[0:10\]
 
-// Must be less than z size limit. Set to 0 to disable floor.
-floor_thickness = %g; // \[0:10\]
+floor_enabled = %g; // \[0:No, 1:Yes\]
 
 walls_enabled = %g; // \[0:No, 1:Yes\]
 
@@ -84,6 +83,8 @@ scriptSetup
 "/* \[Hidden\] */
 
 extent = \[%g, %g\];
+
+floor_thickness = %g;
 
 z_scale = (z_size_limit - base_thickness) / (upper_bound - lower_bound);
 
@@ -146,7 +147,7 @@ prismapModule
 "module Prismap() {
 	union() {
 		scale(\[xy_scale, xy_scale, 1\]) translate(\[%g, %g, 0\]) {
-			if (floor_thickness > 0) {
+			if (floor_enabled != 0) {
 				Floor();
 			}
 			if (walls_enabled != 0) {
@@ -403,15 +404,12 @@ proc wall_offset {} {
 	global config
 	global shp
 	
-	# if walls are off (0 given as thickness), use 1.0 as default
-	set walls [expr {$config(walls) == 0 ? 1.0 : $config(walls)}]
-	
 	# compute x/y extents from maxg-ming instead of using cached _extents,
 	# which are based on projected min/max. We want original extent.
-	set y_scale [expr {($config(y) - $walls) / ($shp(ymaxg) - $shp(yming))}]
-	set x_scale [expr {($config(x) - $walls) / ($shp(xmaxg) - $shp(xming))}]
+	set y_scale [expr {($config(y) - $config(walls)) / ($shp(ymaxg) - $shp(yming))}]
+	set x_scale [expr {($config(x) - $config(walls)) / ($shp(xmaxg) - $shp(xming))}]
 	set xy_scale [expr {min($x_scale, $y_scale)}]
-	return [expr {$walls / double($xy_scale)}]
+	return [expr {$config(walls) / double($xy_scale)}]
 }
 
 proc Floorpan {} {
@@ -485,10 +483,8 @@ proc Process {} {
 	Output $template(header)
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
 	
-	# in this layer, config(floor) represents floor thickness, but we pass it to the OpenSCAD script
-	# as a boolean - just whether or not the floor has nonzero thickness
-	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(base) [expr {$config(floor) > 0}] $config(walls) $config(inflation)
-	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent)
+	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(base) $config(flooron) $config(wallson) $config(inflation)
+	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent) $config(floor)
 	
 	lassign [Floorpan] floor_points walls_points
 	Output $template(floorModule) $floor_points
@@ -522,8 +518,10 @@ proc ConfigDefaults {} {
 		projname {}
 		
 		base    0.0
-		floor   0.0
-		walls   0.0
+		floor   1.0
+		walls   1.0
+		flooron 0
+		wallson 0
 		
 		in      {}
 		attr    {}
@@ -552,21 +550,29 @@ proc ConfigOptions {argl} {
 				}
 			}
 			
-			-f - --floor {
+			--floor-thickness {
 				if {[scan [lindex $argl [incr a]] %f config(floor)] != 1} {
 					Abort {Floor thickness must be numeric.}
 				}
-				if {$config(floor) < 0} {
-					Abort {Floor thickness must be >= 0 (%1$s).} $config(floor)
+				if {$config(floor) < 1} {
+					Abort {Floor thickness must be >= 1 (%1$s).} $config(floor)
 				}
 			}
-			-w - --walls {
+			--wall-thickness {
 				if {[scan [lindex $argl [incr a]] %f config(walls)] != 1} {
 					Abort {Wall thickness must be numeric.}
 				}
-				if {$config(walls) < 0} {
-					Abort {Wall thickness must be >= 0 (%1$s).} $config(walls)
+				if {$config(walls) < 1} {
+					Abort {Wall thickness must be >= 1 (%1$s).} $config(walls)
 				}
+			}
+			
+			-f --floor {
+				set config(flooron) 1
+			}
+			
+			-w --walls {
+				set config(wallson) 1
 			}
 			
 			-l - --lower {
