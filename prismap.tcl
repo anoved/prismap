@@ -490,6 +490,7 @@ proc Process {} {
 	lassign [Floorpan] floor_points walls_points
 	Output $template(floorModule) $floor_points
 	Output $template(wallsModule) $walls_points
+	
 	Output $template(inflateModule)
 	Output $template(extrudeModule)
 	
@@ -518,8 +519,8 @@ proc ConfigDefaults {} {
 		projname {}
 		
 		base    0.0
-		floor   1.0
-		walls   1.0
+		floor   0.0
+		walls   0.0
 		
 		in      {}
 		attr    {}
