@@ -101,7 +101,7 @@ Prismap();
 
 wallsModule
 "module Walls() {
-	linear_extrude(height = floor_thickness + z_size_limit)
+	linear_extrude(height = (floor_enabled ? floor_thickness : 0) + z_size_limit)
 	polygon(points=%s);
 }
 "
@@ -128,7 +128,7 @@ module Inflate(x, y) {
 extrudeModule
 "module Extrude(height) {
 	if (height > 0) {
-		translate([0, 0, floor_thickness]) linear_extrude(height=height) child();
+		translate([0, 0, floor_enabled ? floor_thickness : 0]) linear_extrude(height=height) child();
 	}
 }
 "
