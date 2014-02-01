@@ -257,11 +257,6 @@ proc OpenShapefile {} {
 	# xming, xmaxg, yming, ymaxg - geometry bounding box (unprojected)
 	lassign [$shp(file) info bounds] shp(xming) shp(yming) shp(xmaxg) shp(ymaxg)
 	
-	set shp(bb_1) [Reproject $shp(xming) $shp(ymaxg)]
-	set shp(bb_2) [Reproject $shp(xmaxg) $shp(ymaxg)]
-	set shp(bb_3) [Reproject $shp(xmaxg) $shp(yming)]
-	set shp(bb_4) [Reproject $shp(xming) $shp(yming)]
-	
 	lassign [Reproject $shp(xming) $shp(yming)] shp(xmin) shp(ymin)
 	lassign [Reproject $shp(xmaxg) $shp(ymaxg)] shp(xmax) shp(ymax)
 	
@@ -272,7 +267,6 @@ proc OpenShapefile {} {
 	# x_extent, y_extent - bounding box dimensions
 	set shp(x_extent) [expr {$shp(xmax) - $shp(xmin)}]
 	set shp(y_extent) [expr {$shp(ymax) - $shp(ymin)}]
-	
 }
 
 proc CloseShapefile {} {
