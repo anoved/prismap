@@ -447,20 +447,14 @@ proc Floorpan {} {
 		lappend p4wall "\[$x, $y\]"
 	}
 	
-	
 	set floor_points [format {[%s, %s, %s, %s]} [join $p1 {,}] [join $p2 {,}] [join $p3 {,}] [join $p4 {,}]]
-	#puts $floor_points
 	
-	
-	
-	# compute corner point for walls	
+	# compute corner point for walls
 	lassign [Reproject [expr {$shp(xming) - $wall_offset}] [expr {$shp(ymaxg) + $wall_offset}]] x y
 	
-	
 	set walls_points [format {[%s, %s, %s, %s, %s]} [join $p4 {,}] [join $p1 {,}] [join $p1wall {,}] [format {[%s, %s]} $x $y] [join $p4wall {,}]]
-
-	return [list $floor_points $walls_points]
 	
+	return [list $floor_points $walls_points]
 }
 
 
