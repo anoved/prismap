@@ -71,11 +71,10 @@ z_size_limit = %g;
 // Must be less than z size limit.
 base_thickness = %g; // \[0:10\]
 
-// Must be less than z size limit. Set to 0 to disable floor. (Floor thickness is automatically set to wall thickness if floor is disabled and walls are enabled.)
+// Must be less than z size limit. Set to 0 to disable floor.
 floor_thickness = %g; // \[0:10\]
 
-// Must be less than x and y size limits. Set to 0 to disable walls.
-wall_thickness = %g; // \[0:10\]
+walls_enabled = %g; // \[0:No, 1:Yes\]
 
 // Scaling factor applied to all features. This is a fudge factor to facilitate STL export; it forces shared edges to overlap rather than coincide.
 inflation = %g;
@@ -88,29 +87,31 @@ extent = \[%g, %g\];
 
 bounds = \[\[%g, %g\], \[%g, %g\], \[%g, %g\], \[%g, %g\]\];
 
-z_scale = (z_size_limit - ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness) - base_thickness) / (upper_bound - lower_bound);
+z_scale = (z_size_limit - base_thickness) / (upper_bound - lower_bound);
 
-x_scale = (x_size_limit - wall_thickness) / extent\[0\];
+x_scale = x_size_limit / extent\[0\];
 
-y_scale = (y_size_limit - wall_thickness) / extent\[1\];
+y_scale = y_size_limit / extent\[1\];
 
 xy_scale = min(x_scale, y_scale);
 
-function extrusionheight(value) = ((floor_thickness == 0 && wall_thickness > 0) ? wall_thickness : floor_thickness) + base_thickness + (z_scale * (value - lower_bound));
+function extrusionheight(value) = base_thickness + (z_scale * (value - lower_bound));
 
 Prismap();
 "
 
 wallsModule
 "module Walls() {
-	linear_extrude(height = z_size_limit)
+	translate([0, 0, -floor_thickness])
+	linear_extrude(height = floor_thickness + z_size_limit)
 	polygon(points=%s);
 }
 "
 
 floorModule
 "module Floor() {
-	linear_extrude(height = floor_thickness > 0 ? floor_thickness : wall_thickness)	
+	translate(\[0, 0, -floor_thickness\])
+	linear_extrude(height = floor_thickness)	
 	polygon(points=%s);
 }
 "
@@ -149,10 +150,10 @@ prismapModule
 "module Prismap() {
 	union() {
 		scale(\[xy_scale, xy_scale, 1\]) translate(\[%g, %g, 0\]) {
-			if (floor_thickness > 0 || wall_thickness > 0) {
+			if (floor_thickness > 0) {
 				Floor();
 			}
-			if (wall_thickness > 0) {
+			if (walls_enabled != 0) {
 				Walls();
 			}
 %s		}
@@ -498,7 +499,10 @@ proc Process {} {
 	
 	Output $template(header)
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
-	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(base) $config(floor) $config(walls) $config(inflation)
+	
+	# in this layer, config(floor) represents floor thickness, but we pass it to the OpenSCAD script
+	# as a boolean - just whether or not the floor has nonzero thickness
+	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(base) [expr {$config(floor) > 0}] $config(walls) $config(inflation)
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
 	
 	lassign [Floorpan] floor_points walls_points
