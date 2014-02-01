@@ -104,21 +104,14 @@ Prismap();
 wallsModule
 "module Walls() {
 	linear_extrude(height = z_size_limit)
-	polygon(points=\[
-			bounds\[3\],
-			bounds\[0\],
-			bounds\[1\],
-			\[bounds\[1\]\[0\], bounds\[1\]\[1\] + wall_thickness/xy_scale\],
-			\[bounds\[0\]\[0\] - wall_thickness/xy_scale, bounds\[0\]\[1\] + wall_thickness/xy_scale\],
-			\[bounds\[3\]\[0\] - wall_thickness/xy_scale, bounds\[3\]\[1\]\]
-			\]);
+	polygon(points=%s);
 }
 "
 
 floorModule
 "module Floor() {
 	linear_extrude(height = floor_thickness > 0 ? floor_thickness : wall_thickness)	
-	polygon(points=bounds);
+	polygon(points=%s);
 }
 "
 
@@ -427,6 +420,7 @@ proc wall_offset {} {
 	return [expr {$config(walls) / double($xy_scale)}]
 }
 
+
 # dumps a point list to stdout - substitute for Floor() module points list
 # to get a floor polygon that is approximately adjusted for projection.
 # Just interpolates 10 segments. Same intervals should be used for walls.
@@ -469,12 +463,15 @@ proc Floorpan {} {
 	puts $floor_points
 	
 	
+	
 	# compute corner point for walls	
 	lassign [Reproject [expr {$shp(xming) - $wall_offset}] [expr {$shp(ymaxg) + $wall_offset}]] x y
 	
 	
 	set walls_points [format {[%s, %s, %s, %s, %s]} [join $p4 {,}] [join $p1 {,}] [join $p1wall {,}] [format {[%s, %s]} $x $y] [join $p4wall {,}]]
-	puts $walls_points
+
+	return [list $floor_points $walls_points]
+	
 }
 
 
@@ -503,9 +500,10 @@ proc Process {} {
 	Output $template(dataOptions) $config(lower) $config(upper) $dataDefinitions
 	Output $template(modelOptions) $config(x) $config(y) $config(z) $config(base) $config(floor) $config(walls) $config(inflation)
 	Output $template(scriptSetup) $shp(x_extent) $shp(y_extent) {*}$shp(bb_1) {*}$shp(bb_2) {*}$shp(bb_3) {*}$shp(bb_4)
-	Output $template(floorModule)
-	Floorpan
-	Output $template(wallsModule)
+	
+	lassign [Floorpan] $floor_points $walls_points
+	Output $template(floorModule) $floor_points
+	Output $template(wallsModule) $walls_points
 	Output $template(inflateModule)
 	Output $template(extrudeModule)
 	
